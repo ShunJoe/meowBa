@@ -178,7 +178,7 @@ class MeowRunner:
                             ]
                             self.execute_job(conductor, job)
    
-    def handle_event(self, handler:BaseHandler, event:Dict[str:Any])->None:
+    def handle_event(self, handler:BaseHandler, event:Dict[str,Any])->None:
         """Function for a given handler to handle a given event, without 
         crashing the runner in the event of a problem."""
         print_debug(self._print_target, self.debug_level, 
@@ -193,7 +193,7 @@ class MeowRunner:
                 "Something went wrong during handling for event "
                 f"'{event[EVENT_TYPE]}'. {e}", DEBUG_INFO)
 
-    def execute_job(self, conductor:BaseConductor, job:Dict[str:Any])->None:
+    def execute_job(self, conductor:BaseConductor, job:Dict[str,Any])->None:
         """Function for a given conductor to execute a given job, without 
         crashing the runner in the event of a problem."""
         print_debug(self._print_target, self.debug_level, 

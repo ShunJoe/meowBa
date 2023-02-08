@@ -512,7 +512,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
     _settletime:int
     # TODO clean this struct occasionally
     # A dict of recent job timestamps
-    _recent_jobs:dict[str, Any]
+    _recent_jobs:Dict[str, Any]
     # A lock to solve race conditions on '_recent_jobs'
     _recent_jobs_lock:threading.Lock
     def __init__(self, monitor:WatchdogMonitor, settletime:int=1):
