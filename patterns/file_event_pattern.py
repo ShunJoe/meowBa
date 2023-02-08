@@ -14,7 +14,7 @@ from copy import deepcopy
 from fnmatch import translate
 from re import match
 from time import time, sleep
-from typing import Any, Union
+from typing import Any, Union, List, Dict
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
@@ -44,11 +44,11 @@ class FileEventPattern(BasePattern):
     # The variable name given to the triggering file within recipe code
     triggering_file:str
     # Which types of event the pattern responds to
-    event_mask:list[str]
+    event_mask:List[str]
     def __init__(self, name:str, triggering_path:str, recipe:str, 
-            triggering_file:str, event_mask:list[str]=_DEFAULT_MASK, 
-            parameters:dict[str,Any]={}, outputs:dict[str,Any]={}, 
-            sweep:dict[str,Any]={}):
+            triggering_file:str, event_mask:List[str]=_DEFAULT_MASK, 
+            parameters:Dict[str,Any]={}, outputs:Dict[str,Any]={}, 
+            sweep:Dict[str,Any]={}):
         """FileEventPattern Constructor. This is used to match against file 
         system events, as caught by the python watchdog module."""
         super().__init__(name, recipe, parameters, outputs, sweep)
@@ -79,14 +79,14 @@ class FileEventPattern(BasePattern):
         Called within parent BasePattern constructor."""
         valid_string(recipe, VALID_RECIPE_NAME_CHARS)
 
-    def _is_valid_parameters(self, parameters:dict[str,Any])->None:
+    def _is_valid_parameters(self, parameters:Dict[str,Any])->None:
         """Validation check for 'parameters' variable from main constructor. 
         Called within parent BasePattern constructor."""
         valid_dict(parameters, str, Any, strict=False, min_length=0)
         for k in parameters.keys():
             valid_string(k, VALID_VARIABLE_NAME_CHARS)
 
-    def _is_valid_output(self, outputs:dict[str,str])->None:
+    def _is_valid_output(self, outputs:Dict[str,str])->None:
         """Validation check for 'output' variable from main constructor. 
         Called within parent BasePattern constructor."""
         valid_dict(outputs, str, str, strict=False, min_length=0)
@@ -101,7 +101,7 @@ class FileEventPattern(BasePattern):
                 raise ValueError(f"Invalid event mask '{mask}'. Valid are: "
                     f"{FILE_EVENTS}")
 
-    def _is_valid_sweep(self, sweep: dict[str,Union[int,float,complex]]) -> None:
+    def _is_valid_sweep(self, sweep: Dict[str,Union[int,float,complex]]) -> None:
         """Validation check for 'sweep' variable from main constructor."""
         return super()._is_valid_sweep(sweep)
 
@@ -124,8 +124,8 @@ class WatchdogMonitor(BaseMonitor):
     #A lock to solve race conditions on '_rules'
     _rules_lock:threading.Lock
 
-    def __init__(self, base_dir:str, patterns:dict[str,FileEventPattern], 
-            recipes:dict[str,BaseRecipe], autostart=False, settletime:int=1, 
+    def __init__(self, base_dir:str, patterns:Dict[str,FileEventPattern], 
+            recipes:Dict[str,BaseRecipe], autostart=False, settletime:int=1, 
             print:Any=sys.stdout, logging:int=0)->None:
         """WatchdogEventHandler Constructor. This uses the watchdog module to 
         monitor a directory and all its sub-directories. Watchdog will provide 
@@ -261,7 +261,7 @@ class WatchdogMonitor(BaseMonitor):
         else:
             self._identify_lost_rules(lost_pattern=pattern)
         
-    def get_patterns(self)->dict[str,FileEventPattern]:
+    def get_patterns(self)->Dict[str,FileEventPattern]:
         """Function to get a dict of the currently defined patterns of the 
         monitor. Note that the result is deep-copied, and so can be manipulated
         without directly manipulating the internals of the monitor."""
@@ -324,7 +324,7 @@ class WatchdogMonitor(BaseMonitor):
         else:
             self._identify_lost_rules(lost_recipe=recipe)
 
-    def get_recipes(self)->dict[str,BaseRecipe]:
+    def get_recipes(self)->Dict[str,BaseRecipe]:
         """Function to get a dict of the currently defined recipes of the 
         monitor. Note that the result is deep-copied, and so can be manipulated
         without directly manipulating the internals of the monitor."""
@@ -338,7 +338,7 @@ class WatchdogMonitor(BaseMonitor):
         self._recipes_lock.release()
         return to_return
     
-    def get_rules(self)->dict[str,BaseRule]:
+    def get_rules(self)->Dict[str,BaseRule]:
         """Function to get a dict of the currently defined rules of the 
         monitor. Note that the result is deep-copied, and so can be manipulated
         without directly manipulating the internals of the monitor."""
@@ -450,12 +450,12 @@ class WatchdogMonitor(BaseMonitor):
         automatically called during initialisation."""
         valid_existing_dir_path(base_dir)
 
-    def _is_valid_patterns(self, patterns:dict[str,FileEventPattern])->None:
+    def _is_valid_patterns(self, patterns:Dict[str,FileEventPattern])->None:
         """Validation check for 'patterns' variable from main constructor. Is 
         automatically called during initialisation."""
         valid_dict(patterns, str, FileEventPattern, min_length=0, strict=False)
 
-    def _is_valid_recipes(self, recipes:dict[str,BaseRecipe])->None:
+    def _is_valid_recipes(self, recipes:Dict[str,BaseRecipe])->None:
         """Validation check for 'recipes' variable from main constructor. Is 
         automatically called during initialisation."""
         valid_dict(recipes, str, BaseRecipe, min_length=0, strict=False)

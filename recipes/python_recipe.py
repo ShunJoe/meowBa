@@ -8,7 +8,7 @@ Author(s): David Marchant
 import os
 import sys
 
-from typing import Any, Tuple
+from typing import Any, Tuple, List, Dict
 
 from core.correctness.validation import check_script, valid_string, \
     valid_dict, valid_event, valid_existing_dir_path, setup_debugging
@@ -24,25 +24,25 @@ from core.meow import BaseRecipe, BaseHandler
 
 
 class PythonRecipe(BaseRecipe):
-    def __init__(self, name:str, recipe:list[str], parameters:dict[str,Any]={}, 
-            requirements:dict[str,Any]={}):
+    def __init__(self, name:str, recipe:List[str], parameters:Dict[str,Any]={}, 
+            requirements:Dict[str,Any]={}):
         """PythonRecipe Constructor. This is used to execute python analysis 
         code."""
         super().__init__(name, recipe, parameters, requirements)
 
-    def _is_valid_recipe(self, recipe:list[str])->None:
+    def _is_valid_recipe(self, recipe:List[str])->None:
         """Validation check for 'recipe' variable from main constructor. 
         Called within parent BaseRecipe constructor."""
         check_script(recipe)
 
-    def _is_valid_parameters(self, parameters:dict[str,Any])->None:
+    def _is_valid_parameters(self, parameters:Dict[str,Any])->None:
         """Validation check for 'parameters' variable from main constructor. 
         Called within parent BaseRecipe constructor."""
         valid_dict(parameters, str, Any, strict=False, min_length=0)
         for k in parameters.keys():
             valid_string(k, VALID_VARIABLE_NAME_CHARS)
 
-    def _is_valid_requirements(self, requirements:dict[str,Any])->None:
+    def _is_valid_requirements(self, requirements:Dict[str,Any])->None:
         """Validation check for 'requirements' variable from main constructor. 
         Called within parent BaseRecipe constructor."""
         valid_dict(requirements, str, Any, strict=False, min_length=0)
@@ -75,7 +75,7 @@ class PythonHandler(BaseHandler):
         print_debug(self._print_target, self.debug_level, 
             "Created new PythonHandler instance", DEBUG_INFO)
 
-    def handle(self, event:dict[str,Any])->None:
+    def handle(self, event:Dict[str,Any])->None:
         """Function called to handle a given event."""
         print_debug(self._print_target, self.debug_level, 
             f"Handling event {event[EVENT_PATH]}", DEBUG_INFO)
@@ -101,7 +101,7 @@ class PythonHandler(BaseHandler):
                     yaml_dict[value[0]] = value[1]
                 self.setup_job(event, yaml_dict)
 
-    def valid_handle_criteria(self, event:dict[str,Any])->Tuple[bool,str]:
+    def valid_handle_criteria(self, event:Dict[str,Any])->Tuple[bool,str]:
         """Function to determine given an event defintion, if this handler can 
         process it or not. This handler accepts events from watchdog with 
         Python recipes"""
@@ -124,7 +124,7 @@ class PythonHandler(BaseHandler):
         constructor."""
         valid_existing_dir_path(output_dir, allow_base=True)
 
-    def setup_job(self, event:dict[str,Any], yaml_dict:dict[str,Any])->None:
+    def setup_job(self, event:Dict[str,Any], yaml_dict:Dict[str,Any])->None:
         """Function to set up new job dict and send it to the runner to be 
         executed."""
         meow_job = create_job(

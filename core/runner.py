@@ -12,7 +12,7 @@ import threading
 
 from multiprocessing import Pipe
 from random import randrange
-from typing import Any, Union
+from typing import Any, Union, List, Dict
 
 from core.correctness.vars import DEBUG_WARNING, DEBUG_INFO, EVENT_TYPE, \
     VALID_CHANNELS, JOB_ID, META_FILE
@@ -24,18 +24,18 @@ from core.meow import BaseHandler, BaseMonitor, BaseConductor
 
 class MeowRunner:
     # A collection of all monitors in the runner
-    monitors:list[BaseMonitor]
+    monitors:List[BaseMonitor]
     # A collection of all handlers in the runner
-    handlers:list[BaseHandler]
+    handlers:List[BaseHandler]
     # A collection of all conductors in the runner
-    conductors:list[BaseConductor]
+    conductors:List[BaseConductor]
     # A collection of all channels from each monitor
-    from_monitors: list[VALID_CHANNELS]
+    from_monitors: List[VALID_CHANNELS]
     # A collection of all channels from each handler
-    from_handlers: list[VALID_CHANNELS]
-    def __init__(self, monitors:Union[BaseMonitor,list[BaseMonitor]], 
-            handlers:Union[BaseHandler,list[BaseHandler]], 
-            conductors:Union[BaseConductor,list[BaseConductor]],
+    from_handlers: List[VALID_CHANNELS]
+    def __init__(self, monitors:Union[BaseMonitor,List[BaseMonitor]], 
+            handlers:Union[BaseHandler,List[BaseHandler]], 
+            conductors:Union[BaseConductor,List[BaseConductor]],
             print:Any=sys.stdout, logging:int=0)->None:
         """MeowRunner constructor. This connects all provided monitors, 
         handlers and conductors according to what events and jobs they produce 
@@ -178,7 +178,7 @@ class MeowRunner:
                             ]
                             self.execute_job(conductor, job)
    
-    def handle_event(self, handler:BaseHandler, event:dict[str:Any])->None:
+    def handle_event(self, handler:BaseHandler, event:Dict[str:Any])->None:
         """Function for a given handler to handle a given event, without 
         crashing the runner in the event of a problem."""
         print_debug(self._print_target, self.debug_level, 
@@ -193,7 +193,7 @@ class MeowRunner:
                 "Something went wrong during handling for event "
                 f"'{event[EVENT_TYPE]}'. {e}", DEBUG_INFO)
 
-    def execute_job(self, conductor:BaseConductor, job:dict[str:Any])->None:
+    def execute_job(self, conductor:BaseConductor, job:Dict[str:Any])->None:
         """Function for a given conductor to execute a given job, without 
         crashing the runner in the event of a problem."""
         print_debug(self._print_target, self.debug_level, 
@@ -306,21 +306,21 @@ class MeowRunner:
             "Job conductor thread stopped", DEBUG_INFO)
 
     def _is_valid_monitors(self, 
-            monitors:Union[BaseMonitor,list[BaseMonitor]])->None:
+            monitors:Union[BaseMonitor,List[BaseMonitor]])->None:
         """Validation check for 'monitors' variable from main constructor."""
         check_type(monitors, BaseMonitor, alt_types=[list])
         if type(monitors) == list:
             valid_list(monitors, BaseMonitor, min_length=1)
 
     def _is_valid_handlers(self, 
-            handlers:Union[BaseHandler,list[BaseHandler]])->None:
+            handlers:Union[BaseHandler,List[BaseHandler]])->None:
         """Validation check for 'handlers' variable from main constructor."""
         check_type(handlers, BaseHandler, alt_types=[list])
         if type(handlers) == list:
             valid_list(handlers, BaseHandler, min_length=1)
 
     def _is_valid_conductors(self, 
-            conductors:Union[BaseConductor,list[BaseConductor]])->None:
+            conductors:Union[BaseConductor,List[BaseConductor]])->None:
         """Validation check for 'conductors' variable from main constructor."""
         check_type(conductors, BaseConductor, alt_types=[list])
         if type(conductors) == list:
