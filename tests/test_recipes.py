@@ -9,7 +9,7 @@ from typing import Dict
 from core.correctness.vars import EVENT_TYPE, WATCHDOG_BASE, EVENT_RULE, \
     EVENT_TYPE_WATCHDOG, EVENT_PATH, SHA256, WATCHDOG_HASH, JOB_ID, \
     JOB_TYPE_PYTHON, JOB_PARAMETERS, JOB_HASH, PYTHON_FUNC, JOB_STATUS, \
-    PYTHON_OUTPUT_DIR, PYTHON_EXECUTION_BASE, META_FILE, JOB_ERROR, \
+    META_FILE, JOB_ERROR, \
     PARAMS_FILE, SWEEP_STOP, SWEEP_JUMP, SWEEP_START, JOB_TYPE_PAPERMILL, \
     get_base_file, get_job_file, get_result_file
 from core.correctness.validation import valid_job
@@ -23,7 +23,7 @@ from recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
 from recipes.python_recipe import PythonRecipe, PythonHandler, python_job_func
 from rules import FileEventJupyterNotebookRule, FileEventPythonRule
 from shared import setup, teardown, BAREBONES_PYTHON_SCRIPT, \
-    COMPLETE_PYTHON_SCRIPT, TEST_HANDLER_BASE, TEST_MONITOR_BASE, \
+    COMPLETE_PYTHON_SCRIPT, TEST_JOB_QUEUE, TEST_MONITOR_BASE, \
     TEST_JOB_OUTPUT, BAREBONES_NOTEBOOK, APPENDING_NOTEBOOK, COMPLETE_NOTEBOOK
 
 
@@ -112,18 +112,12 @@ class JupyterNotebookTests(unittest.TestCase):
 
     # Test PapermillHandler can be created
     def testPapermillHanderMinimum(self)->None:
-        PapermillHandler(
-            TEST_HANDLER_BASE, 
-            TEST_JOB_OUTPUT
-        )
+        PapermillHandler(job_queue_dir=TEST_JOB_QUEUE)
 
     # Test PapermillHandler will handle given events
     def testPapermillHandlerHandling(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PapermillHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PapermillHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -172,10 +166,7 @@ class JupyterNotebookTests(unittest.TestCase):
     # Test PapermillHandler will create enough jobs from single sweep
     def testPapermillHandlerHandlingSingleSweep(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PapermillHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PapermillHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -240,10 +231,7 @@ class JupyterNotebookTests(unittest.TestCase):
     # Test PapermillHandler will create enough jobs from multiple sweeps
     def testPapermillHandlerHandlingMultipleSweep(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PapermillHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PapermillHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -365,14 +353,11 @@ class JupyterNotebookTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:papermill_job_func,
-                PYTHON_OUTPUT_DIR:TEST_JOB_OUTPUT,
-                PYTHON_EXECUTION_BASE:TEST_HANDLER_BASE
+                PYTHON_FUNC:papermill_job_func
             }
         )
 
-        job_dir = os.path.join(
-            job_dict[PYTHON_EXECUTION_BASE], job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         make_dir(job_dir)
 
         meta_file = os.path.join(job_dir, META_FILE)
@@ -384,9 +369,9 @@ class JupyterNotebookTests(unittest.TestCase):
         base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PAPERMILL))
         write_notebook(APPENDING_NOTEBOOK, base_file)
 
-        papermill_job_func(job_dict)
+        papermill_job_func(job_dir)
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         self.assertTrue(os.path.exists(job_dir))
 
         meta_path = os.path.join(job_dir, META_FILE)
@@ -413,7 +398,7 @@ class JupyterNotebookTests(unittest.TestCase):
         except Exception:
             pass
 
-        self.assertEqual(len(os.listdir(TEST_HANDLER_BASE)), 0)
+        self.assertEqual(len(os.listdir(TEST_JOB_QUEUE)), 0)
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 0)
 
     #TODO Test handling criteria function
@@ -479,18 +464,12 @@ class PythonTests(unittest.TestCase):
 
     # Test PythonHandler can be created
     def testPythonHandlerMinimum(self)->None:
-        PythonHandler(
-            TEST_HANDLER_BASE, 
-            TEST_JOB_OUTPUT
-        )
+        PythonHandler(job_queue_dir=TEST_JOB_QUEUE)
 
     # Test PythonHandler will handle given events
     def testPythonHandlerHandling(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PythonHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PythonHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -539,10 +518,7 @@ class PythonTests(unittest.TestCase):
     # Test PythonHandler will create enough jobs from single sweep
     def testPythonHandlerHandlingSingleSweep(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PythonHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PythonHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -607,10 +583,7 @@ class PythonTests(unittest.TestCase):
     # Test PythonHandler will create enough jobs from multiple sweeps
     def testPythonHandlerHandlingMultipleSweep(self)->None:
         from_handler_reader, from_handler_writer = Pipe()
-        ph = PythonHandler(
-            TEST_HANDLER_BASE,
-            TEST_JOB_OUTPUT
-        )
+        ph = PythonHandler(job_queue_dir=TEST_JOB_QUEUE)
         ph.to_runner = from_handler_writer
         
         with open(os.path.join(TEST_MONITOR_BASE, "A"), "w") as f:
@@ -732,14 +705,11 @@ class PythonTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:python_job_func,
-                PYTHON_OUTPUT_DIR:TEST_JOB_OUTPUT,
-                PYTHON_EXECUTION_BASE:TEST_HANDLER_BASE
+                PYTHON_FUNC:python_job_func
             }
         )
 
-        job_dir = os.path.join(
-            job_dict[PYTHON_EXECUTION_BASE], job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         make_dir(job_dir)
 
         meta_file = os.path.join(job_dir, META_FILE)
@@ -752,9 +722,8 @@ class PythonTests(unittest.TestCase):
         write_notebook(APPENDING_NOTEBOOK, base_file)
         write_file(lines_to_string(COMPLETE_PYTHON_SCRIPT), base_file)
 
-        python_job_func(job_dict)
+        python_job_func(job_dir)
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, job_dict[JOB_ID])
         self.assertTrue(os.path.exists(job_dir))
         meta_path = os.path.join(job_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
@@ -782,7 +751,7 @@ class PythonTests(unittest.TestCase):
         except Exception:
             pass
 
-        self.assertEqual(len(os.listdir(TEST_HANDLER_BASE)), 0)
+        self.assertEqual(len(os.listdir(TEST_JOB_QUEUE)), 0)
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 0)
 
     # TODO test default parameter function execution

@@ -8,7 +8,7 @@ from typing import Any, Union
 
 from core.correctness.validation import check_type, check_implementation, \
     valid_string, valid_dict, valid_list, valid_existing_file_path, \
-    valid_existing_dir_path, valid_non_existing_path, valid_event, valid_job, \
+    valid_dir_path, valid_non_existing_path, valid_event, valid_job, \
     setup_debugging, valid_watchdog_event, check_callable
 from core.correctness.vars import VALID_NAME_CHARS, SHA256, EVENT_TYPE, \
     EVENT_PATH, JOB_TYPE, JOB_EVENT, JOB_ID, JOB_PATTERN, JOB_RECIPE, \
@@ -215,21 +215,22 @@ class CorrectnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):        
             valid_existing_file_path(dir_path, SHA256)
     
-    # Test valid_existing_dir_path can find directories, or not
-    def testValidExistingDirPath(self)->None:
-        valid_existing_dir_path(TEST_MONITOR_BASE)
+    # Test valid_dir_path can find directories, or not
+    def testValidDirPath(self)->None:
+        valid_dir_path(TEST_MONITOR_BASE)
+        valid_dir_path(TEST_MONITOR_BASE, must_exist=False)
 
         dir_path = os.path.join(TEST_MONITOR_BASE, "dir")
 
         with self.assertRaises(FileNotFoundError):        
-            valid_existing_dir_path("not_existing_"+dir_path, SHA256)
+            valid_dir_path("not_existing_"+dir_path, must_exist=True)
 
         file_path = os.path.join(TEST_MONITOR_BASE, "file.txt")
         with open(file_path, 'w') as hashed_file:
             hashed_file.write("Some data\n")
 
         with self.assertRaises(ValueError):        
-            valid_existing_dir_path(file_path, SHA256)
+            valid_dir_path(file_path)
 
     # Test valid_non_existing_path can find existing paths, or not
     def testValidNonExistingPath(self)->None:

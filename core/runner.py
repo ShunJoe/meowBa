@@ -15,10 +15,11 @@ from random import randrange
 from typing import Any, Union, Dict, List
 
 from core.correctness.vars import DEBUG_WARNING, DEBUG_INFO, EVENT_TYPE, \
-    VALID_CHANNELS, JOB_ID, META_FILE
+    VALID_CHANNELS, JOB_ID, META_FILE, DEFAULT_JOB_OUTPUT_DIR, \
+    DEFAULT_JOB_QUEUE_DIR
 from core.correctness.validation import setup_debugging, check_type, \
-    valid_list
-from core.functionality import  print_debug, wait, read_yaml
+    valid_list, valid_dir_path
+from core.functionality import  print_debug, wait, read_yaml, make_dir
 from core.meow import BaseHandler, BaseMonitor, BaseConductor
 
 
@@ -33,18 +34,32 @@ class MeowRunner:
     from_monitors: List[VALID_CHANNELS]
     # A collection of all channels from each handler
     from_handlers: List[VALID_CHANNELS]
+    # Directory where queued jobs are initially written to
+    job_queue_dir:str
+    # Directory where completed jobs are finally written to
+    job_output_dir:str
     def __init__(self, monitors:Union[BaseMonitor,List[BaseMonitor]], 
             handlers:Union[BaseHandler,List[BaseHandler]], 
             conductors:Union[BaseConductor,List[BaseConductor]],
+            job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR,
+            job_output_dir:str=DEFAULT_JOB_OUTPUT_DIR,
             print:Any=sys.stdout, logging:int=0)->None:
         """MeowRunner constructor. This connects all provided monitors, 
         handlers and conductors according to what events and jobs they produce 
         or consume."""
 
+
+        self._is_valid_job_queue_dir(job_queue_dir)
+        self._is_valid_job_output_dir(job_output_dir)
+
         self._is_valid_conductors(conductors)
         # If conductors isn't a list, make it one
         if not type(conductors) == list:
             conductors = [conductors]
+        for conductor in conductors:
+            conductor.job_output_dir = job_output_dir
+            conductor.job_queue_dir = job_queue_dir
+
         self.conductors = conductors
 
         self._is_valid_handlers(handlers)
@@ -56,6 +71,7 @@ class MeowRunner:
             # Create a channel from the handler back to this runner
             handler_to_runner_reader, handler_to_runner_writer = Pipe()
             handler.to_runner = handler_to_runner_writer
+            handler.job_queue_dir = job_queue_dir
             self.from_handlers.append(handler_to_runner_reader)
         self.handlers = handlers
 
@@ -170,13 +186,13 @@ class MeowRunner:
                         # If we've only one conductor, use that
                         if len(valid_conductors) == 1:
                             conductor = valid_conductors[0]
-                            self.execute_job(conductor, job)
+                            self.execute_job(conductor, job_dir)
                         # If multiple handlers then randomly pick one
                         else:
                             conductor = valid_conductors[
                                 randrange(len(valid_conductors))
                             ]
-                            self.execute_job(conductor, job)
+                            self.execute_job(conductor, job_dir)
    
     def handle_event(self, handler:BaseHandler, event:Dict[str,Any])->None:
         """Function for a given handler to handle a given event, without 
@@ -193,19 +209,31 @@ class MeowRunner:
                 "Something went wrong during handling for event "
                 f"'{event[EVENT_TYPE]}'. {e}", DEBUG_INFO)
 
-    def execute_job(self, conductor:BaseConductor, job:Dict[str,Any])->None:
+    def execute_job(self, conductor:BaseConductor, job_dir:str)->None:
         """Function for a given conductor to execute a given job, without 
         crashing the runner in the event of a problem."""
-        print_debug(self._print_target, self.debug_level, 
-            f"Starting execution for job: '{job[JOB_ID]}'", DEBUG_INFO)
+        job_id = os.path.basename(job_dir)
+        print_debug(
+            self._print_target, 
+            self.debug_level, 
+            f"Starting execution for job: '{job_id}'", 
+            DEBUG_INFO
+        )
         try:
-            conductor.execute(job)
-            print_debug(self._print_target, self.debug_level, 
-                f"Completed execution for job: '{job[JOB_ID]}'", DEBUG_INFO)
+            conductor.execute(job_dir)
+            print_debug(
+                self._print_target, 
+                self.debug_level, 
+                f"Completed execution for job: '{job_id}'", 
+                DEBUG_INFO
+            )
         except Exception as e:
-            print_debug(self._print_target, self.debug_level, 
-                "Something went wrong during execution for job "
-                f"'{job[JOB_ID]}'. {e}", DEBUG_INFO)
+            print_debug(
+                self._print_target, 
+                self.debug_level, 
+                f"Something went wrong in execution of job '{job_id}'. {e}", 
+                DEBUG_INFO
+            )
 
     def start(self)->None:
         """Function to start the runner by starting all of the constituent 
@@ -308,20 +336,49 @@ class MeowRunner:
     def _is_valid_monitors(self, 
             monitors:Union[BaseMonitor,List[BaseMonitor]])->None:
         """Validation check for 'monitors' variable from main constructor."""
-        check_type(monitors, BaseMonitor, alt_types=[List])
+        check_type(
+            monitors, 
+            BaseMonitor, 
+            alt_types=[List], 
+            hint="MeowRunner.monitors"
+        )
         if type(monitors) == list:
             valid_list(monitors, BaseMonitor, min_length=1)
 
     def _is_valid_handlers(self, 
             handlers:Union[BaseHandler,List[BaseHandler]])->None:
         """Validation check for 'handlers' variable from main constructor."""
-        check_type(handlers, BaseHandler, alt_types=[List])
+        check_type(
+            handlers, 
+            BaseHandler, 
+            alt_types=[List], 
+            hint="MeowRunner.handlers"
+        )
         if type(handlers) == list:
             valid_list(handlers, BaseHandler, min_length=1)
 
     def _is_valid_conductors(self, 
             conductors:Union[BaseConductor,List[BaseConductor]])->None:
         """Validation check for 'conductors' variable from main constructor."""
-        check_type(conductors, BaseConductor, alt_types=[List])
+        check_type(
+            conductors, 
+            BaseConductor, 
+            alt_types=[List], 
+            hint="MeowRunner.conductors"
+        )
         if type(conductors) == list:
             valid_list(conductors, BaseConductor, min_length=1)
+
+    def _is_valid_job_queue_dir(self, job_queue_dir)->None:
+        """Validation check for 'job_queue_dir' variable from main 
+        constructor."""
+        valid_dir_path(job_queue_dir, must_exist=False)
+        if not os.path.exists(job_queue_dir):
+            make_dir(job_queue_dir)
+
+    def _is_valid_job_output_dir(self, job_output_dir)->None:
+        """Validation check for 'job_output_dir' variable from main 
+        constructor."""
+        valid_dir_path(job_output_dir, must_exist=False)
+        if not os.path.exists(job_output_dir):
+            make_dir(job_output_dir)

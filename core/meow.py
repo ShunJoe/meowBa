@@ -142,7 +142,7 @@ class BasePattern:
         """Validation check for 'sweep' variable from main constructor. This 
         function is implemented to check for the types given in the signature, 
         and must be overridden if these differ."""
-        check_type(sweep, Dict)
+        check_type(sweep, Dict, hint="BasePattern.sweep")
         if not sweep:
             return
         for _, v in sweep.items():
@@ -152,11 +152,23 @@ class BasePattern:
                 ], strict=True)
 
             check_type(
-                v[SWEEP_START], expected_type=int, alt_types=[float, complex])
+                v[SWEEP_START], 
+                expected_type=int, 
+                alt_types=[float, complex],
+                hint=f"BasePattern.sweep[{SWEEP_START}]"
+            )
             check_type(
-                v[SWEEP_STOP], expected_type=int, alt_types=[float, complex])
+                v[SWEEP_STOP], 
+                expected_type=int, 
+                alt_types=[float, complex],
+                hint=f"BasePattern.sweep[{SWEEP_STOP}]"
+            )
             check_type(
-                v[SWEEP_JUMP], expected_type=int, alt_types=[float, complex])
+                v[SWEEP_JUMP], 
+                expected_type=int, 
+                alt_types=[float, complex],
+                hint=f"BasePattern.sweep[{SWEEP_JUMP}]"
+            )
             # Try to check that this loop is not infinite
             if v[SWEEP_JUMP] == 0:
                 raise ValueError(
@@ -215,8 +227,8 @@ class BaseRule:
         self.pattern = pattern
         self._is_valid_recipe(recipe)
         self.recipe = recipe
-        check_type(pattern, BasePattern)
-        check_type(recipe, BaseRecipe)
+        check_type(pattern, BasePattern, hint="BaseRule.pattern")
+        check_type(recipe, BaseRecipe, hint="BaseRule.recipe")
         if pattern.recipe != recipe.name:
             raise ValueError(f"Cannot create Rule {name}. Pattern "
                 f"{pattern.name} does not identify Recipe {recipe.name}. It "
@@ -369,10 +381,14 @@ class BaseMonitor:
 
 
 class BaseHandler:
-    # A channel for sending messages to the runner. Note that this is not 
-    # initialised within the constructor, but within the runner when passed the
-    # handler is passed to it.
+    # A channel for sending messages to the runner. Note that this will be 
+    # overridden by a MeowRunner, if a handler instance is passed to it, and so
+    # does not need to be initialised within the handler itself.
     to_runner: VALID_CHANNELS
+    # Directory where queued jobs are initially written to. Note that this 
+    # will be overridden by a MeowRunner, if a handler instance is passed to 
+    # it, and so does not need to be initialised within the handler itself.
+    job_queue_dir:str
     def __init__(self)->None:
         """BaseHandler Constructor. This will check that any class inheriting 
         from it implements its validation functions."""
@@ -399,6 +415,14 @@ class BaseHandler:
 
 
 class BaseConductor:
+    # Directory where queued jobs are initially written to. Note that this 
+    # will be overridden by a MeowRunner, if a handler instance is passed to 
+    # it, and so does not need to be initialised within the handler itself.
+    job_queue_dir:str
+    # Directory where completed jobs are finally written to. Note that this 
+    # will be overridden by a MeowRunner, if a handler instance is passed to 
+    # it, and so does not need to be initialised within the handler itself.
+    job_output_dir:str
     def __init__(self)->None:
         """BaseConductor Constructor. This will check that any class inheriting
         from it implements its validation functions."""
@@ -418,9 +442,9 @@ class BaseConductor:
         process it or not. Must be implemented by any child process."""
         pass
 
-    def execute(self, job:Dict[str,Any])->None:
-        """Function to execute a given job. Must be implemented by any child 
-        process."""
+    def execute(self, job_dir:str)->None:
+        """Function to execute a given job directory. Must be implemented by 
+        any child process."""
         pass
 
 
@@ -433,8 +457,8 @@ def create_rules(patterns:Union[Dict[str,BasePattern],List[BasePattern]],
     provided pattern and recipe dictionaries must be keyed with the 
     corresponding pattern and recipe names."""
     # Validation of inputs
-    check_type(patterns, Dict, alt_types=[List])
-    check_type(recipes, Dict, alt_types=[List])
+    check_type(patterns, Dict, alt_types=[List], hint="create_rules.patterns")
+    check_type(recipes, Dict, alt_types=[List], hint="create_rules.recipes")
     valid_list(new_rules, BaseRule, min_length=0)
 
     # Convert a pattern list to a dictionary
@@ -481,8 +505,8 @@ def create_rule(pattern:BasePattern, recipe:BaseRecipe,
     """Function to create a valid rule from a given pattern and recipe. All 
     inbuilt rule types are considered, with additional definitions provided 
     through the 'new_rules' variable."""
-    check_type(pattern, BasePattern)
-    check_type(recipe, BaseRecipe)
+    check_type(pattern, BasePattern, hint="create_rule.pattern")
+    check_type(recipe, BaseRecipe, hint="create_rule.recipe")
     valid_list(new_rules, BaseRule, min_length=0)
 
     # Imported here to avoid circular imports at top of file

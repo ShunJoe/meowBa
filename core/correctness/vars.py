@@ -77,13 +77,15 @@ DIR_EVENTS = [
     DIR_RETROACTIVE_EVENT
 ]
 
+# runner defaults
+DEFAULT_JOB_QUEUE_DIR = "job_queue"
+DEFAULT_JOB_OUTPUT_DIR = "job_output"
+
 # meow jobs
 JOB_TYPE = "job_type"
 JOB_TYPE_PYTHON = "python"
 JOB_TYPE_PAPERMILL = "papermill"
 PYTHON_FUNC = "func"
-PYTHON_EXECUTION_BASE = "exection_base"
-PYTHON_OUTPUT_DIR = "output_dir"
 
 JOB_TYPES = {
     JOB_TYPE_PAPERMILL: [

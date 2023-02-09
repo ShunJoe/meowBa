@@ -44,7 +44,7 @@ JOB_KEYS = {
 }
 
 def check_type(variable:Any, expected_type:Type, alt_types:List[Type]=[], 
-        or_none:bool=False)->None:
+        or_none:bool=False, hint:str="")->None:
     """Checks if a given variable is of the expected type. Raises TypeError or
     ValueError as appropriate if any issues are encountered."""
 
@@ -53,18 +53,15 @@ def check_type(variable:Any, expected_type:Type, alt_types:List[Type]=[],
     if get_origin(expected_type) is Union:
         type_list = list(get_args(expected_type))
     type_list = type_list + alt_types
-#    # If we have any types from typing, then update to allow checks against 
-#    # their base types too
-#    for t in type_list:
-#        if get_origin(t):
-#            type_list.append(get_origin(t))
 
     # Only accept None if explicitly allowed
     if variable is None:
         if or_none == False:
-            raise TypeError(
-                f'Not allowed None for variable. Expected {expected_type}.'
-            )
+            if hint:
+                msg = f"Not allowed None for {hint}. Expected {expected_type}."
+            else:
+                msg = f"Not allowed None. Expected {expected_type}."
+            raise TypeError(msg)
         else:
             return
 
@@ -74,10 +71,12 @@ def check_type(variable:Any, expected_type:Type, alt_types:List[Type]=[],
 
     # Check that variable type is within the accepted type list
     if not isinstance(variable, tuple(type_list)):
-        raise TypeError(
-            'Expected type(s) are %s, got %s'
-            % (get_args(expected_type), type(variable))
-        )
+        if hint:
+            msg = f"Expected type(s) for {hint} are '{type_list}', " \
+                  f"got {type(variable)}"
+        else:
+            msg = f"Expected type(s) are '{type_list}', got {type(variable)}"
+        raise TypeError(msg)
 
 def check_callable(call:Any)->None:
     """Checks if a given variable is a callable function. Raises TypeError if 
@@ -221,16 +220,19 @@ def valid_existing_file_path(variable:str, allow_base:bool=False,
         raise ValueError(
             f"Requested file '{variable}' is not a file.")
 
-def valid_existing_dir_path(variable:str, allow_base:bool=False):
-    """Check the given string is a path to an existing directory."""
+def valid_dir_path(variable:str, must_exist:bool=False, allow_base:bool=False
+        )->None:
+    """Check the given string is a valid directory path, either to an existing 
+    one or a location that could contain one."""
     # Check that the string is a path
     valid_path(variable, allow_base=allow_base, extension="")
     # Check the path exists
-    if not exists(variable):
+    does_exist = exists(variable)
+    if must_exist and not does_exist:
         raise FileNotFoundError(
             f"Requested dir path '{variable}' does not exist.")
     # Check it is a directory
-    if not isdir(variable):
+    if does_exist and not isdir(variable):
         raise ValueError(
             f"Requested dir '{variable}' is not a directory.")
 

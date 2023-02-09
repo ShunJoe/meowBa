@@ -292,7 +292,7 @@ class MeowTests(unittest.TestCase):
             TestConductor()
 
         class FullTestConductor(BaseConductor):
-            def execute(self, job:Dict[str,Any])->None:
+            def execute(self, job_dir:str)->None:
                 pass
 
             def valid_execute_criteria(self, job:Dict[str,Any]

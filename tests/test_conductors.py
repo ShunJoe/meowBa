@@ -5,7 +5,7 @@ import unittest
 from typing import Dict
 
 from core.correctness.vars import JOB_TYPE_PYTHON, SHA256, JOB_PARAMETERS, \
-    JOB_HASH, PYTHON_FUNC, PYTHON_OUTPUT_DIR, PYTHON_EXECUTION_BASE, JOB_ID, \
+    JOB_HASH, PYTHON_FUNC, JOB_ID, \
     META_FILE, PARAMS_FILE, JOB_STATUS, JOB_ERROR, \
     STATUS_DONE, JOB_TYPE_PAPERMILL, get_base_file, get_result_file, \
     get_job_file
@@ -19,7 +19,7 @@ from recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     papermill_job_func
 from recipes.python_recipe import PythonRecipe, python_job_func
 from shared import setup, teardown, TEST_MONITOR_BASE, APPENDING_NOTEBOOK, \
-    TEST_JOB_OUTPUT, TEST_HANDLER_BASE, COMPLETE_PYTHON_SCRIPT
+    TEST_JOB_OUTPUT, TEST_JOB_QUEUE, COMPLETE_PYTHON_SCRIPT
 
 
 def failing_func():
@@ -41,7 +41,10 @@ class MeowTests(unittest.TestCase):
 
     # Test LocalPythonConductor executes valid python jobs
     def testLocalPythonConductorValidPythonJob(self)->None:
-        lpc = LocalPythonConductor()
+        lpc = LocalPythonConductor(
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
 
         file_path = os.path.join(TEST_MONITOR_BASE, "test")
         result_path = os.path.join(TEST_MONITOR_BASE, "output")
@@ -82,13 +85,11 @@ class MeowTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:python_job_func,
-                PYTHON_OUTPUT_DIR:TEST_JOB_OUTPUT,
-                PYTHON_EXECUTION_BASE:TEST_HANDLER_BASE
+                PYTHON_FUNC:python_job_func
             }
         )
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         make_dir(job_dir)
 
         param_file = os.path.join(job_dir, PARAMS_FILE)
@@ -100,14 +101,14 @@ class MeowTests(unittest.TestCase):
         base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PYTHON))
         write_file(lines_to_string(COMPLETE_PYTHON_SCRIPT), base_file)
 
-        lpc.execute(job_dict)
+        lpc.execute(job_dir)
 
         self.assertFalse(os.path.exists(job_dir))
         
-        output_dir = os.path.join(TEST_JOB_OUTPUT, job_dict[JOB_ID])
-        self.assertTrue(os.path.exists(output_dir))
+        job_output_dir = os.path.join(TEST_JOB_OUTPUT, job_dict[JOB_ID])
+        self.assertTrue(os.path.exists(job_output_dir))
 
-        meta_path = os.path.join(output_dir, META_FILE)
+        meta_path = os.path.join(job_output_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
         status = read_yaml(meta_path)
         self.assertIsInstance(status, Dict)
@@ -116,18 +117,22 @@ class MeowTests(unittest.TestCase):
 
         self.assertNotIn(JOB_ERROR, status)
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_base_file(JOB_TYPE_PYTHON))))
-        self.assertTrue(os.path.exists(os.path.join(output_dir, PARAMS_FILE)))
+            os.path.join(job_output_dir, get_base_file(JOB_TYPE_PYTHON))))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_job_file(JOB_TYPE_PYTHON))))
+            os.path.join(job_output_dir, PARAMS_FILE)))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_result_file(JOB_TYPE_PYTHON))))
+            os.path.join(job_output_dir, get_job_file(JOB_TYPE_PYTHON))))
+        self.assertTrue(os.path.exists(
+            os.path.join(job_output_dir, get_result_file(JOB_TYPE_PYTHON))))
 
         self.assertTrue(os.path.exists(result_path))
 
      # Test LocalPythonConductor executes valid papermill jobs
     def testLocalPythonConductorValidPapermillJob(self)->None:
-        lpc = LocalPythonConductor()
+        lpc = LocalPythonConductor(
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
 
         file_path = os.path.join(TEST_MONITOR_BASE, "test")
         result_path = os.path.join(TEST_MONITOR_BASE, "output", "test")
@@ -168,13 +173,11 @@ class MeowTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:papermill_job_func,
-                PYTHON_OUTPUT_DIR:TEST_JOB_OUTPUT,
-                PYTHON_EXECUTION_BASE:TEST_HANDLER_BASE
+                PYTHON_FUNC:papermill_job_func
             }
         )
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         make_dir(job_dir)
 
         param_file = os.path.join(job_dir, PARAMS_FILE)
@@ -186,16 +189,15 @@ class MeowTests(unittest.TestCase):
         base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PAPERMILL))
         write_notebook(APPENDING_NOTEBOOK, base_file)
 
-        lpc.execute(job_dict)
+        lpc.execute(job_dir)
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, job_dict[JOB_ID])
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
         self.assertFalse(os.path.exists(job_dir))
         
-        output_dir = os.path.join(TEST_JOB_OUTPUT, job_dict[JOB_ID])
-        self.assertTrue(os.path.exists(output_dir))
+        job_output_dir = os.path.join(TEST_JOB_OUTPUT, job_dict[JOB_ID])
+        self.assertTrue(os.path.exists(job_output_dir))
 
-
-        meta_path = os.path.join(output_dir, META_FILE)
+        meta_path = os.path.join(job_output_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
         status = read_yaml(meta_path)
         self.assertIsInstance(status, Dict)
@@ -203,18 +205,22 @@ class MeowTests(unittest.TestCase):
         self.assertEqual(status[JOB_STATUS], STATUS_DONE)
 
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_base_file(JOB_TYPE_PAPERMILL))))
-        self.assertTrue(os.path.exists(os.path.join(output_dir, PARAMS_FILE)))
+            os.path.join(job_output_dir, get_base_file(JOB_TYPE_PAPERMILL))))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_job_file(JOB_TYPE_PAPERMILL))))
+            os.path.join(job_output_dir, PARAMS_FILE)))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_result_file(JOB_TYPE_PAPERMILL))))
+            os.path.join(job_output_dir, get_job_file(JOB_TYPE_PAPERMILL))))
+        self.assertTrue(os.path.exists(
+            os.path.join(job_output_dir, get_result_file(JOB_TYPE_PAPERMILL))))
 
         self.assertTrue(os.path.exists(result_path))
 
     # Test LocalPythonConductor does not execute jobs with bad arguments
     def testLocalPythonConductorBadArgs(self)->None:
-        lpc = LocalPythonConductor()
+        lpc = LocalPythonConductor(
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
 
         file_path = os.path.join(TEST_MONITOR_BASE, "test")
         result_path = os.path.join(TEST_MONITOR_BASE, "output", "test")
@@ -255,21 +261,34 @@ class MeowTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:papermill_job_func,
             }
         )
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, bad_job_dict[JOB_ID])
-        make_dir(job_dir)
+        bad_job_dir = os.path.join(TEST_JOB_QUEUE, bad_job_dict[JOB_ID])
+        make_dir(bad_job_dir)
 
-        param_file = os.path.join(job_dir, PARAMS_FILE)
-        write_yaml(params_dict, param_file)
+        bad_param_file = os.path.join(bad_job_dir, PARAMS_FILE)
+        write_yaml(params_dict, bad_param_file)
 
-        base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PAPERMILL))
-        write_notebook(APPENDING_NOTEBOOK, base_file)
+        bad_meta_path = os.path.join(bad_job_dir, META_FILE)
+        write_yaml(bad_job_dict, bad_meta_path)
 
-        with self.assertRaises(KeyError):
-            lpc.execute(bad_job_dict)
+        bad_base_file = os.path.join(bad_job_dir, 
+            get_base_file(JOB_TYPE_PAPERMILL))
+        write_notebook(APPENDING_NOTEBOOK, bad_base_file)
+
+        lpc.execute(bad_job_dir)
+
+        bad_output_dir = os.path.join(TEST_JOB_OUTPUT, bad_job_dict[JOB_ID])
+        self.assertFalse(os.path.exists(bad_job_dir))
+        self.assertTrue(os.path.exists(bad_output_dir))
+
+        bad_meta_path = os.path.join(bad_output_dir, META_FILE)
+        self.assertTrue(os.path.exists(bad_meta_path))
+
+        bad_job = read_yaml(bad_meta_path)
+        self.assertIsInstance(bad_job, dict)
+        self.assertIn(JOB_ERROR, bad_job)
 
         # Ensure execution can continue after one failed job
         good_job_dict = create_job(
@@ -283,42 +302,50 @@ class MeowTests(unittest.TestCase):
             extras={
                 JOB_PARAMETERS:params_dict,
                 JOB_HASH: file_hash,
-                PYTHON_FUNC:papermill_job_func,
-                PYTHON_OUTPUT_DIR:TEST_JOB_OUTPUT,
-                PYTHON_EXECUTION_BASE:TEST_HANDLER_BASE
+                PYTHON_FUNC:papermill_job_func
             }
         )
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, good_job_dict[JOB_ID])
-        make_dir(job_dir)
+        good_job_dir = os.path.join(TEST_JOB_QUEUE, good_job_dict[JOB_ID])
+        make_dir(good_job_dir)
 
-        param_file = os.path.join(job_dir, PARAMS_FILE)
-        write_yaml(params_dict, param_file)
+        good_param_file = os.path.join(good_job_dir, PARAMS_FILE)
+        write_yaml(params_dict, good_param_file)
 
-        base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PAPERMILL))
-        write_notebook(APPENDING_NOTEBOOK, base_file)
+        good_meta_path = os.path.join(good_job_dir, META_FILE)
+        write_yaml(good_job_dict, good_meta_path)
 
-        lpc.execute(good_job_dict)
+        good_base_file = os.path.join(good_job_dir, 
+            get_base_file(JOB_TYPE_PAPERMILL))
+        write_notebook(APPENDING_NOTEBOOK, good_base_file)
 
-        job_dir = os.path.join(TEST_HANDLER_BASE, good_job_dict[JOB_ID])
-        self.assertFalse(os.path.exists(job_dir))
+        lpc.execute(good_job_dir)
+
+        good_job_dir = os.path.join(TEST_JOB_QUEUE, good_job_dict[JOB_ID])
+        self.assertFalse(os.path.exists(good_job_dir))
         
-        output_dir = os.path.join(TEST_JOB_OUTPUT, good_job_dict[JOB_ID])
-        self.assertTrue(os.path.exists(output_dir))
-        self.assertTrue(os.path.exists(os.path.join(output_dir, META_FILE)))
+        good_job_output_dir = os.path.join(TEST_JOB_OUTPUT, good_job_dict[JOB_ID])
+        self.assertTrue(os.path.exists(good_job_output_dir))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_base_file(JOB_TYPE_PAPERMILL))))
-        self.assertTrue(os.path.exists(os.path.join(output_dir, PARAMS_FILE)))
+            os.path.join(good_job_output_dir, META_FILE)))
+
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_job_file(JOB_TYPE_PAPERMILL))))
+            os.path.join(good_job_output_dir, get_base_file(JOB_TYPE_PAPERMILL))))
         self.assertTrue(os.path.exists(
-            os.path.join(output_dir, get_result_file(JOB_TYPE_PAPERMILL))))
+            os.path.join(good_job_output_dir, PARAMS_FILE)))
+        self.assertTrue(os.path.exists(
+            os.path.join(good_job_output_dir, get_job_file(JOB_TYPE_PAPERMILL))))
+        self.assertTrue(os.path.exists(
+            os.path.join(good_job_output_dir, get_result_file(JOB_TYPE_PAPERMILL))))
 
         self.assertTrue(os.path.exists(result_path))
 
-    # Test LocalPythonConductor does not execute jobs with bad functions
-    def testLocalPythonConductorBadFunc(self)->None:
-        lpc = LocalPythonConductor()
+    # Test LocalPythonConductor does not execute jobs with missing metafile
+    def testLocalPythonConductorMissingMetafile(self)->None:
+        lpc = LocalPythonConductor(
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
 
         file_path = os.path.join(TEST_MONITOR_BASE, "test")
         result_path = os.path.join(TEST_MONITOR_BASE, "output", "test")
@@ -361,8 +388,83 @@ class MeowTests(unittest.TestCase):
             }
         )
 
-        with self.assertRaises(Exception):
-            lpc.execute(job_dict)
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
+        make_dir(job_dir)
+
+        with self.assertRaises(FileNotFoundError):
+            lpc.execute(job_dir)
+
+    # Test LocalPythonConductor does not execute jobs with bad functions
+    def testLocalPythonConductorBadFunc(self)->None:
+        lpc = LocalPythonConductor(
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
+
+        file_path = os.path.join(TEST_MONITOR_BASE, "test")
+        result_path = os.path.join(TEST_MONITOR_BASE, "output", "test")
+
+        with open(file_path, "w") as f:
+            f.write("Data")
+
+        file_hash = get_file_hash(file_path, SHA256)
+
+        pattern = FileEventPattern(
+            "pattern", 
+            file_path, 
+            "recipe_one", 
+            "infile", 
+            parameters={
+                "extra":"A line from a test Pattern",
+                "outfile":result_path
+            })
+        recipe = JupyterNotebookRecipe(
+            "recipe_one", APPENDING_NOTEBOOK)
+
+        rule = create_rule(pattern, recipe)
+
+        params = {
+            "extra":"extra",
+            "infile":file_path,
+            "outfile":result_path
+        }
+
+        job_dict = create_job(
+            JOB_TYPE_PAPERMILL,
+            create_watchdog_event(
+                file_path,
+                rule,
+                TEST_MONITOR_BASE,
+                file_hash
+            ),
+            extras={
+                JOB_PARAMETERS:params,
+                JOB_HASH: file_hash,
+                PYTHON_FUNC:failing_func,
+            }
+        )
+
+        job_dir = os.path.join(TEST_JOB_QUEUE, job_dict[JOB_ID])
+        make_dir(job_dir)
+
+        param_file = os.path.join(job_dir, PARAMS_FILE)
+        write_yaml(params, param_file)
+
+        meta_path = os.path.join(job_dir, META_FILE)
+        write_yaml(job_dict, meta_path)
+
+        lpc.execute(job_dir)
+
+        output_dir = os.path.join(TEST_JOB_OUTPUT, job_dict[JOB_ID])
+        self.assertFalse(os.path.exists(job_dir))
+        self.assertTrue(os.path.exists(output_dir))
+
+        meta_path = os.path.join(output_dir, META_FILE)
+        self.assertTrue(os.path.exists(meta_path))
+
+        job = read_yaml(meta_path)
+        self.assertIsInstance(job, dict)
+        self.assertIn(JOB_ERROR, job)
 
     # TODO test job status funcs
     # TODO test mangled status file reads

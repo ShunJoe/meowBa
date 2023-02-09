@@ -88,8 +88,8 @@ def _get_file_sha256(file_path):
     
     return sha256_hash.hexdigest()
 
-def get_file_hash(file_path:str, hash:str):
-    check_type(hash, str)
+def get_file_hash(file_path:str, hash:str, hint:str=""):
+    check_type(hash, str, hint=hint)
 
     valid_existing_file_path(file_path)
 
@@ -204,7 +204,8 @@ def write_notebook(source:Dict[str,Any], filename:str):
 def parameterize_jupyter_notebook(jupyter_notebook:Dict[str,Any], 
         parameters:Dict[str,Any], expand_env_values:bool=False)->Dict[str,Any]:
     nbformat.validate(jupyter_notebook)
-    check_type(parameters, Dict)
+    check_type(parameters, Dict, 
+        hint="parameterize_jupyter_notebook.parameters")
 
     if jupyter_notebook["nbformat"] != 4:
         raise Warning(
@@ -277,7 +278,8 @@ def parameterize_jupyter_notebook(jupyter_notebook:Dict[str,Any],
 def parameterize_python_script(script:List[str], parameters:Dict[str,Any], 
         expand_env_values:bool=False)->Dict[str,Any]:
     check_script(script)
-    check_type(parameters, Dict)
+    check_type(parameters, Dict
+        ,hint="parameterize_python_script.parameters")
 
     output_script = copy.deepcopy(script)
 

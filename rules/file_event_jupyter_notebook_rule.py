@@ -26,9 +26,17 @@ class FileEventJupyterNotebookRule(BaseRule):
     def _is_valid_pattern(self, pattern:FileEventPattern)->None:
         """Validation check for 'pattern' variable from main constructor. Is 
         automatically called during initialisation."""
-        check_type(pattern, FileEventPattern)
+        check_type(
+            pattern, 
+            FileEventPattern,
+            hint="FileEventJupyterNotebookRule.pattern"
+        )
 
     def _is_valid_recipe(self, recipe:JupyterNotebookRecipe)->None:
         """Validation check for 'recipe' variable from main constructor. Is 
         automatically called during initialisation."""
-        check_type(recipe, JupyterNotebookRecipe)
+        check_type(
+            recipe, 
+            JupyterNotebookRecipe,
+            hint="FileEventJupyterNotebookRule.recipe"
+        )

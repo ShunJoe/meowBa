@@ -19,8 +19,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 from core.correctness.validation import check_type, valid_string, \
-    valid_dict, valid_list, valid_path, valid_existing_dir_path, \
-    setup_debugging
+    valid_dict, valid_list, valid_path, valid_dir_path, setup_debugging
 from core.correctness.vars import VALID_RECIPE_NAME_CHARS, \
     VALID_VARIABLE_NAME_CHARS, FILE_EVENTS, FILE_CREATE_EVENT, \
     FILE_MODIFY_EVENT, FILE_MOVED_EVENT, DEBUG_INFO, \
@@ -134,7 +133,7 @@ class WatchdogMonitor(BaseMonitor):
         super().__init__(patterns, recipes)
         self._is_valid_base_dir(base_dir)
         self.base_dir = base_dir
-        check_type(settletime, int)
+        check_type(settletime, int, hint="WatchdogMonitor.settletime")
         self._print_target, self.debug_level = setup_debugging(print, logging)       
         self._patterns_lock = threading.Lock()
         self._recipes_lock = threading.Lock()
@@ -218,7 +217,7 @@ class WatchdogMonitor(BaseMonitor):
         """Function to add a pattern to the current definitions. Any rules 
         that can be possibly created from that pattern will be automatically 
         created."""
-        check_type(pattern, FileEventPattern)
+        check_type(pattern, FileEventPattern, hint="add_pattern.pattern")
         self._patterns_lock.acquire()
         try:
             if pattern.name in self._patterns:
@@ -235,14 +234,19 @@ class WatchdogMonitor(BaseMonitor):
     def update_pattern(self, pattern:FileEventPattern)->None:
         """Function to update a pattern in the current definitions. Any rules 
         created from that pattern will be automatically updated."""
-        check_type(pattern, FileEventPattern)
+        check_type(pattern, FileEventPattern, hint="update_pattern.pattern")
         self.remove_pattern(pattern.name)
         self.add_pattern(pattern)
 
     def remove_pattern(self, pattern: Union[str,FileEventPattern])->None:
         """Function to remove a pattern from the current definitions. Any rules 
         that will be no longer valid will be automatically removed."""
-        check_type(pattern, str, alt_types=[FileEventPattern])
+        check_type(
+            pattern, 
+            str, 
+            alt_types=[FileEventPattern], 
+            hint="remove_pattern.pattern"
+        )
         lookup_key = pattern
         if isinstance(lookup_key, FileEventPattern):
             lookup_key = pattern.name
@@ -280,7 +284,7 @@ class WatchdogMonitor(BaseMonitor):
         """Function to add a recipe to the current definitions. Any rules 
         that can be possibly created from that recipe will be automatically 
         created."""
-        check_type(recipe, BaseRecipe)
+        check_type(recipe, BaseRecipe, hint="add_recipe.recipe")
         self._recipes_lock.acquire()
         try:
             if recipe.name in self._recipes:
@@ -297,14 +301,19 @@ class WatchdogMonitor(BaseMonitor):
     def update_recipe(self, recipe: BaseRecipe)->None:
         """Function to update a recipe in the current definitions. Any rules 
         created from that recipe will be automatically updated."""
-        check_type(recipe, BaseRecipe)
+        check_type(recipe, BaseRecipe, hint="update_recipe.recipe")
         self.remove_recipe(recipe.name)
         self.add_recipe(recipe)
     
     def remove_recipe(self, recipe:Union[str,BaseRecipe])->None:
         """Function to remove a recipe from the current definitions. Any rules 
         that will be no longer valid will be automatically removed."""
-        check_type(recipe, str, alt_types=[BaseRecipe])
+        check_type(
+            recipe, 
+            str, 
+            alt_types=[BaseRecipe], 
+            hint="remove_recipe.recipe"
+        )
         lookup_key = recipe
         if isinstance(lookup_key, BaseRecipe):
             lookup_key = recipe.name
@@ -449,7 +458,7 @@ class WatchdogMonitor(BaseMonitor):
     def _is_valid_base_dir(self, base_dir:str)->None:
         """Validation check for 'base_dir' variable from main constructor. Is 
         automatically called during initialisation."""
-        valid_existing_dir_path(base_dir)
+        valid_dir_path(base_dir, must_exist=True)
 
     def _is_valid_patterns(self, patterns:Dict[str,FileEventPattern])->None:
         """Validation check for 'patterns' variable from main constructor. Is 

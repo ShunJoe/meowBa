@@ -22,9 +22,17 @@ class FileEventPythonRule(BaseRule):
     def _is_valid_pattern(self, pattern:FileEventPattern)->None:
         """Validation check for 'pattern' variable from main constructor. Is 
         automatically called during initialisation."""
-        check_type(pattern, FileEventPattern)
+        check_type(
+            pattern, 
+            FileEventPattern,
+            hint="FileEventPythonRule.pattern"
+        )
 
     def _is_valid_recipe(self, recipe:PythonRecipe)->None:
         """Validation check for 'recipe' variable from main constructor. Is 
         automatically called during initialisation."""
-        check_type(recipe, PythonRecipe)
+        check_type(
+            recipe, 
+            PythonRecipe,
+            hint="FileEventPythonRule.recipe"
+        )

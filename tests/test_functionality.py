@@ -10,7 +10,7 @@ from time import sleep
 from core.correctness.vars import CHAR_LOWERCASE, CHAR_UPPERCASE, \
     SHA256, EVENT_TYPE, EVENT_PATH, EVENT_TYPE_WATCHDOG, \
     WATCHDOG_BASE, WATCHDOG_HASH, EVENT_RULE, JOB_PARAMETERS, JOB_HASH, \
-    PYTHON_FUNC, PYTHON_OUTPUT_DIR, PYTHON_EXECUTION_BASE, JOB_ID, JOB_EVENT, \
+    PYTHON_FUNC, JOB_ID, JOB_EVENT, \
     JOB_TYPE, JOB_PATTERN, JOB_RECIPE, JOB_RULE, JOB_STATUS, JOB_CREATE_TIME, \
     JOB_REQUIREMENTS, STATUS_QUEUED, JOB_TYPE_PAPERMILL
 from core.functionality import generate_id, wait, get_file_hash, rmtree, \
@@ -335,9 +335,7 @@ class CorrectnessTests(unittest.TestCase):
                     "outfile":"result_path"
                 },
                 JOB_HASH: "file_hash",
-                PYTHON_FUNC:max,
-                PYTHON_OUTPUT_DIR:"output",
-                PYTHON_EXECUTION_BASE:"execution"
+                PYTHON_FUNC:max
             }
         )
 

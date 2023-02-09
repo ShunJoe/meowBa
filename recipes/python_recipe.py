@@ -11,13 +11,13 @@ import sys
 from typing import Any, Tuple, Dict, List
 
 from core.correctness.validation import check_script, valid_string, \
-    valid_dict, valid_event, valid_existing_dir_path, setup_debugging
+    valid_dict, valid_event, valid_dir_path, setup_debugging
 from core.correctness.vars import VALID_VARIABLE_NAME_CHARS, PYTHON_FUNC, \
-    DEBUG_INFO, EVENT_TYPE_WATCHDOG, JOB_HASH, PYTHON_EXECUTION_BASE, \
+    DEBUG_INFO, EVENT_TYPE_WATCHDOG, JOB_HASH, DEFAULT_JOB_QUEUE_DIR, \
     EVENT_RULE, EVENT_PATH, JOB_TYPE_PYTHON, WATCHDOG_HASH, JOB_PARAMETERS, \
-    PYTHON_OUTPUT_DIR, JOB_ID, WATCHDOG_BASE, META_FILE, \
+    JOB_ID, WATCHDOG_BASE, META_FILE, \
     PARAMS_FILE, JOB_STATUS, STATUS_QUEUED, EVENT_TYPE, EVENT_RULE, \
-    get_job_file, get_base_file, get_result_file
+    get_base_file
 from core.functionality import print_debug, create_job, replace_keywords, \
     make_dir, write_yaml, write_file, lines_to_string, read_file_lines
 from core.meow import BaseRecipe, BaseHandler
@@ -51,27 +51,20 @@ class PythonRecipe(BaseRecipe):
 
 
 class PythonHandler(BaseHandler):
-    # TODO move me to base handler
-    # handler directory to setup jobs in
-    handler_base:str
-    # TODO move me to conductor?
-    # Final location for job output to be placed
-    output_dir:str
     # Config option, above which debug messages are ignored
     debug_level:int
     # Where print messages are sent
     _print_target:Any
-    def __init__(self, handler_base:str, output_dir:str, print:Any=sys.stdout, 
-            logging:int=0)->None:
+    def __init__(self, job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR, 
+            print:Any=sys.stdout, logging:int=0)->None:
         """PythonHandler Constructor. This creates jobs to be executed as 
         python functions. This does not run as a continuous thread to 
         handle execution, but is invoked according to a factory pattern using 
-        the handle function."""
+        the handle function. Note that if this handler is given to a MeowRunner
+        object, the job_queue_dir will be overwridden but its"""
         super().__init__()
-        self._is_valid_handler_base(handler_base)
-        self.handler_base = handler_base
-        self._is_valid_output_dir(output_dir)
-        self.output_dir = output_dir
+        self._is_valid_job_queue_dir(job_queue_dir)
+        self.job_queue_dir = job_queue_dir
         self._print_target, self.debug_level = setup_debugging(print, logging)
         print_debug(self._print_target, self.debug_level, 
             "Created new PythonHandler instance", DEBUG_INFO)
@@ -115,15 +108,12 @@ class PythonHandler(BaseHandler):
             pass
         return False, str(e)
 
-    def _is_valid_handler_base(self, handler_base)->None:
-        """Validation check for 'handler_base' variable from main 
+    def _is_valid_job_queue_dir(self, job_queue_dir)->None:
+        """Validation check for 'job_queue_dir' variable from main 
         constructor."""
-        valid_existing_dir_path(handler_base)
-
-    def _is_valid_output_dir(self, output_dir)->None:
-        """Validation check for 'output_dir' variable from main 
-        constructor."""
-        valid_existing_dir_path(output_dir, allow_base=True)
+        valid_dir_path(job_queue_dir, must_exist=False)
+        if not os.path.exists(job_queue_dir):
+            make_dir(job_queue_dir)
 
     def setup_job(self, event:Dict[str,Any], yaml_dict:Dict[str,Any])->None:
         """Function to set up new job dict and send it to the runner to be 
@@ -134,9 +124,7 @@ class PythonHandler(BaseHandler):
             extras={
                 JOB_PARAMETERS:yaml_dict,
                 JOB_HASH: event[WATCHDOG_HASH],
-                PYTHON_FUNC:python_job_func,
-                PYTHON_OUTPUT_DIR:self.output_dir,
-                PYTHON_EXECUTION_BASE:self.handler_base
+                PYTHON_FUNC:python_job_func
             }
         )
         print_debug(self._print_target, self.debug_level,  
@@ -152,8 +140,7 @@ class PythonHandler(BaseHandler):
         )
 
         # Create a base job directory
-        job_dir = os.path.join(
-            meow_job[PYTHON_EXECUTION_BASE], meow_job[JOB_ID])
+        job_dir = os.path.join(self.job_queue_dir, meow_job[JOB_ID])
         make_dir(job_dir)
 
         # write a status file to the job directory
@@ -178,7 +165,7 @@ class PythonHandler(BaseHandler):
 
 
 # Papermill job execution code, to be run within the conductor
-def python_job_func(job):
+def python_job_func(job_dir):
     # Requires own imports as will be run in its own execution environment
     import sys
     import os
@@ -189,17 +176,18 @@ def python_job_func(job):
     from core.correctness.vars import JOB_EVENT, JOB_ID, \
         EVENT_PATH, META_FILE, PARAMS_FILE, \
         JOB_STATUS, JOB_HASH, SHA256, STATUS_SKIPPED, JOB_END_TIME, \
-        JOB_ERROR, STATUS_FAILED, PYTHON_EXECUTION_BASE, get_base_file, \
+        JOB_ERROR, STATUS_FAILED, get_base_file, \
         get_job_file, get_result_file
 
     # Identify job files
-    job_dir = os.path.join(job[PYTHON_EXECUTION_BASE], job[JOB_ID])
     meta_file = os.path.join(job_dir, META_FILE)
     base_file = os.path.join(job_dir, get_base_file(JOB_TYPE_PYTHON))
     job_file = os.path.join(job_dir, get_job_file(JOB_TYPE_PYTHON))
     result_file = os.path.join(job_dir, get_result_file(JOB_TYPE_PYTHON))
     param_file = os.path.join(job_dir, PARAMS_FILE)
 
+    # Get job defintions   
+    job = read_yaml(meta_file)
     yaml_dict = read_yaml(param_file)
 
     # Check the hash of the triggering file, if present. This addresses 

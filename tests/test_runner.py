@@ -16,8 +16,8 @@ from recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
 from recipes.python_recipe import PythonHandler, PythonRecipe
 from shared import setup, teardown, \
-    TEST_HANDLER_BASE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
-    APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT
+    TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
+    APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR
 
 
 class MeowTests(unittest.TestCase):
@@ -28,16 +28,15 @@ class MeowTests(unittest.TestCase):
     def tearDown(self)->None:
         super().tearDown()
         teardown()
-        
+
     # Test MeowRunner creation
     def testMeowRunnerSetup(self)->None:
-
         monitor_one = WatchdogMonitor(TEST_MONITOR_BASE, {}, {})
         monitor_two = WatchdogMonitor(TEST_MONITOR_BASE, {}, {})
         monitors = [ monitor_one, monitor_two ]
 
-        handler_one = PapermillHandler(TEST_HANDLER_BASE, TEST_JOB_OUTPUT)
-        handler_two = PapermillHandler(TEST_HANDLER_BASE, TEST_JOB_OUTPUT)
+        handler_one = PapermillHandler()
+        handler_two = PapermillHandler()
         handlers = [ handler_one, handler_two ]
 
         conductor_one = LocalPythonConductor()
@@ -117,6 +116,48 @@ class MeowTests(unittest.TestCase):
         self.assertIsInstance(runner.conductors, list)
         for conductor in runner.conductors:
             self.assertIsInstance(conductor, BaseConductor)
+    
+    # Test meow runner directory overrides
+    def testMeowRunnerDirOverridesSetup(self)->None:
+        monitor_one = WatchdogMonitor(TEST_MONITOR_BASE, {}, {})
+
+        original_queue_dir = os.path.join(TEST_DIR, "original_queue")
+        original_output_dir = os.path.join(TEST_DIR, "original_output")
+        overridden_queue_dir = os.path.join(TEST_DIR, "overridden_queue")
+        overridden_output_dir = os.path.join(TEST_DIR, "overridden_output")
+
+        handler_one = PapermillHandler(job_queue_dir=original_queue_dir)
+ 
+        conductor_one = LocalPythonConductor(
+            job_queue_dir=original_queue_dir, 
+            job_output_dir=original_output_dir
+        )
+
+        self.assertTrue(os.path.exists(original_queue_dir))
+        self.assertTrue(os.path.exists(original_output_dir))
+        self.assertFalse(os.path.exists(overridden_queue_dir))
+        self.assertFalse(os.path.exists(overridden_output_dir))
+
+        self.assertEqual(handler_one.job_queue_dir, original_queue_dir)
+        self.assertEqual(conductor_one.job_queue_dir, original_queue_dir)
+        self.assertEqual(conductor_one.job_output_dir, original_output_dir)
+
+        MeowRunner(
+            monitor_one, 
+            handler_one, 
+            conductor_one, 
+            job_queue_dir=overridden_queue_dir, 
+            job_output_dir=overridden_output_dir
+        )
+
+        self.assertTrue(os.path.exists(original_queue_dir))
+        self.assertTrue(os.path.exists(original_output_dir))
+        self.assertTrue(os.path.exists(overridden_queue_dir))
+        self.assertTrue(os.path.exists(overridden_output_dir))
+
+        self.assertEqual(handler_one.job_queue_dir, overridden_queue_dir)
+        self.assertEqual(conductor_one.job_queue_dir, overridden_queue_dir)
+        self.assertEqual(conductor_one.job_output_dir, overridden_output_dir)
 
     # Test single meow papermill job execution
     def testMeowRunnerPapermillExecution(self)->None:
@@ -148,11 +189,10 @@ class MeowTests(unittest.TestCase):
                 recipes,
                 settletime=1
             ), 
-            PapermillHandler(
-                TEST_HANDLER_BASE,
-                TEST_JOB_OUTPUT,
-            ),
+            PapermillHandler(),
             LocalPythonConductor(),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT,
             print=runner_debug_stream,
             logging=3                
         )        
@@ -243,10 +283,11 @@ class MeowTests(unittest.TestCase):
                 settletime=1
             ), 
             PapermillHandler(
-                TEST_HANDLER_BASE,
-                TEST_JOB_OUTPUT
+                job_queue_dir=TEST_JOB_QUEUE,
             ),
             LocalPythonConductor(),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT,
             print=runner_debug_stream,
             logging=3
         )        
@@ -346,10 +387,11 @@ class MeowTests(unittest.TestCase):
                 settletime=1
             ), 
             PythonHandler(
-                TEST_HANDLER_BASE,
-                TEST_JOB_OUTPUT,
+                job_queue_dir=TEST_JOB_QUEUE
             ),
             LocalPythonConductor(),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT,
             print=runner_debug_stream,
             logging=3                
         )        
@@ -405,7 +447,7 @@ class MeowTests(unittest.TestCase):
         self.assertTrue(os.path.exists(output_path))
         output = read_file(os.path.join(output_path))
         self.assertEqual(output, "12505000.0")
-        
+
     # Test meow python job chaining within runner
     def testMeowRunnerLinkedPythonExecution(self)->None:
         pattern_one = FileEventPattern(
@@ -448,10 +490,11 @@ class MeowTests(unittest.TestCase):
                 settletime=1
             ), 
             PythonHandler(
-                TEST_HANDLER_BASE,
-                TEST_JOB_OUTPUT
+                job_queue_dir=TEST_JOB_QUEUE
             ),
             LocalPythonConductor(),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT,
             print=runner_debug_stream,
             logging=3
         )        
@@ -540,7 +583,7 @@ class MeowTests(unittest.TestCase):
         self.assertTrue(os.path.exists(final_output_path))
         final_output = read_file(os.path.join(final_output_path))
         self.assertEqual(final_output, "2146.5625")
-       
+
     # TODO sweep execution test
     # TODO adding tests with numpy or other external dependency
     # TODO test getting job cannot handle
@@ -551,3 +594,5 @@ class MeowTests(unittest.TestCase):
     # TODO test with several mismatched handlers
     # TODO test with several matched conductors
     # TODO test with several mismatched conductors
+    # TODO tests runner job queue dir
+    # TODO tests runner job output dir

@@ -5,23 +5,31 @@ Author(s): David Marchant
 """
 import os
 
+from core.correctness.vars import DEFAULT_JOB_OUTPUT_DIR, DEFAULT_JOB_QUEUE_DIR
 from core.functionality import make_dir, rmtree
 
 
 # testing 
+TEST_DIR = "test_files"
 TEST_MONITOR_BASE = "test_monitor_base"
-TEST_HANDLER_BASE = "test_handler_base"
+TEST_JOB_QUEUE = "test_job_queue_dir"
 TEST_JOB_OUTPUT = "test_job_output"
 
 def setup():
+    make_dir(TEST_DIR, ensure_clean=True)
     make_dir(TEST_MONITOR_BASE, ensure_clean=True)
-    make_dir(TEST_HANDLER_BASE, ensure_clean=True)
+    make_dir(TEST_JOB_QUEUE, ensure_clean=True)
     make_dir(TEST_JOB_OUTPUT, ensure_clean=True)
+    make_dir(DEFAULT_JOB_OUTPUT_DIR, ensure_clean=True)
+    make_dir(DEFAULT_JOB_QUEUE_DIR, ensure_clean=True)
 
 def teardown():
+    rmtree(TEST_DIR)
     rmtree(TEST_MONITOR_BASE)
-    rmtree(TEST_HANDLER_BASE)
+    rmtree(TEST_JOB_QUEUE)
     rmtree(TEST_JOB_OUTPUT)
+    rmtree(DEFAULT_JOB_OUTPUT_DIR)
+    rmtree(DEFAULT_JOB_QUEUE_DIR)
     rmtree("first")
 
 # Recipe funcs
