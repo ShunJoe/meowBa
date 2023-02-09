@@ -8,7 +8,7 @@ Author(s): David Marchant
 import os
 import sys
 
-from typing import Any, Tuple, List, Dict
+from typing import Any, Tuple, Dict, List
 
 from core.correctness.validation import check_script, valid_string, \
     valid_dict, valid_event, valid_existing_dir_path, setup_debugging
@@ -48,6 +48,7 @@ class PythonRecipe(BaseRecipe):
         valid_dict(requirements, str, Any, strict=False, min_length=0)
         for k in requirements.keys():
             valid_string(k, VALID_VARIABLE_NAME_CHARS)
+
 
 class PythonHandler(BaseHandler):
     # TODO move me to base handler
@@ -174,6 +175,7 @@ class PythonHandler(BaseHandler):
         
         # Send job directory, as actual definitons will be read from within it
         self.to_runner.send(job_dir)
+
 
 # Papermill job execution code, to be run within the conductor
 def python_job_func(job):

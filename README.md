@@ -19,3 +19,8 @@ Pytest unittests are provided within the 'tests directory, as well as a script *
 with individual tests runnable with:
 
     pytest test_runner.py::MeowTests::testMeowRunnerLinkedPythonExecution -W ignore::DeprecationWarning
+
+to run locally, update your '~/.bashrc' file to inclue:
+
+    # Manually added to get local testing of Python files working easier
+    export PYTHONPATH=/home/patch/Documents/Research/Python

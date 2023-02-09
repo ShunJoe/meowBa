@@ -4,6 +4,7 @@ import os
 import unittest
 
 from multiprocessing import Pipe
+from typing import Dict
 
 from core.correctness.vars import EVENT_TYPE, WATCHDOG_BASE, EVENT_RULE, \
     EVENT_TYPE_WATCHDOG, EVENT_PATH, SHA256, WATCHDOG_HASH, JOB_ID, \
@@ -391,7 +392,7 @@ class JupyterNotebookTests(unittest.TestCase):
         meta_path = os.path.join(job_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
         status = read_yaml(meta_path)
-        self.assertIsInstance(status, dict)
+        self.assertIsInstance(status, Dict)
         self.assertIn(JOB_STATUS, status)
         self.assertEqual(status[JOB_STATUS], job_dict[JOB_STATUS])
 
@@ -759,7 +760,7 @@ class PythonTests(unittest.TestCase):
         self.assertTrue(os.path.exists(meta_path))
 
         status = read_yaml(meta_path)
-        self.assertIsInstance(status, dict)
+        self.assertIsInstance(status, Dict)
         self.assertIn(JOB_STATUS, status)
         self.assertEqual(status[JOB_STATUS], job_dict[JOB_STATUS])    
         self.assertNotIn(JOB_ERROR, status)

@@ -12,7 +12,7 @@ import threading
 
 from multiprocessing import Pipe
 from random import randrange
-from typing import Any, Union, List, Dict
+from typing import Any, Union, Dict, List
 
 from core.correctness.vars import DEBUG_WARNING, DEBUG_INFO, EVENT_TYPE, \
     VALID_CHANNELS, JOB_ID, META_FILE
@@ -308,20 +308,20 @@ class MeowRunner:
     def _is_valid_monitors(self, 
             monitors:Union[BaseMonitor,List[BaseMonitor]])->None:
         """Validation check for 'monitors' variable from main constructor."""
-        check_type(monitors, BaseMonitor, alt_types=[list])
+        check_type(monitors, BaseMonitor, alt_types=[List])
         if type(monitors) == list:
             valid_list(monitors, BaseMonitor, min_length=1)
 
     def _is_valid_handlers(self, 
             handlers:Union[BaseHandler,List[BaseHandler]])->None:
         """Validation check for 'handlers' variable from main constructor."""
-        check_type(handlers, BaseHandler, alt_types=[list])
+        check_type(handlers, BaseHandler, alt_types=[List])
         if type(handlers) == list:
             valid_list(handlers, BaseHandler, min_length=1)
 
     def _is_valid_conductors(self, 
             conductors:Union[BaseConductor,List[BaseConductor]])->None:
         """Validation check for 'conductors' variable from main constructor."""
-        check_type(conductors, BaseConductor, alt_types=[list])
+        check_type(conductors, BaseConductor, alt_types=[List])
         if type(conductors) == list:
             valid_list(conductors, BaseConductor, min_length=1)

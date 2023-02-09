@@ -9,7 +9,7 @@ import os
 import nbformat
 import sys
 
-from typing import Any, Tuple, List, Dict
+from typing import Any, Tuple, Dict
 
 from core.correctness.validation import check_type, valid_string, \
     valid_dict, valid_path, valid_existing_dir_path, setup_debugging, \
@@ -44,7 +44,7 @@ class JupyterNotebookRecipe(BaseRecipe):
     def _is_valid_recipe(self, recipe:Dict[str,Any])->None:
         """Validation check for 'recipe' variable from main constructor. 
         Called within parent BaseRecipe constructor."""
-        check_type(recipe, dict)
+        check_type(recipe, Dict)
         nbformat.validate(recipe)
 
     def _is_valid_parameters(self, parameters:Dict[str,Any])->None:

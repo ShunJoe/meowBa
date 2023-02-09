@@ -14,7 +14,7 @@ from copy import deepcopy
 from fnmatch import translate
 from re import match
 from time import time, sleep
-from typing import Any, Union, List, Dict
+from typing import Any, Union, Dict, List
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
@@ -189,7 +189,8 @@ class WatchdogMonitor(BaseMonitor):
                 # Use regex to match event paths against rule paths
                 target_path = rule.pattern.triggering_path
                 recursive_regexp = translate(target_path)
-                direct_regexp = recursive_regexp.replace('.*', '[^/]*')
+                direct_regexp = recursive_regexp.replace(
+                    '.*', '[^'+ os.path.sep +']*')
                 recursive_hit = match(recursive_regexp, handle_path)
                 direct_hit = match(direct_regexp, handle_path)
 
@@ -511,7 +512,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
     # A time to wait per event path, during which extra events are discared
     _settletime:int
     # TODO clean this struct occasionally
-    # A dict of recent job timestamps
+    # A Dict of recent job timestamps
     _recent_jobs:Dict[str, Any]
     # A lock to solve race conditions on '_recent_jobs'
     _recent_jobs_lock:threading.Lock

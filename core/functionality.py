@@ -7,11 +7,15 @@ import os
 import yaml
 
 from datetime import datetime
+from typing import List
 
 from multiprocessing.connection import Connection, wait as multi_wait
+# Need to import additional Connection type for Windows machines
+if os.name == 'nt':
+    from multiprocessing.connection import PipeConnection
 from multiprocessing.queues import Queue
 from papermill.translators import papermill_translators
-from typing import Any
+from typing import Any, Dict
 from random import SystemRandom
 
 from core.correctness.validation import check_type, valid_existing_file_path, \
@@ -36,7 +40,7 @@ KEYWORD_JOB = "{JOB}"
 
 
 #TODO Make this guaranteed unique
-def generate_id(prefix:str="", length:int=16, existing_ids:list[str]=[], 
+def generate_id(prefix:str="", length:int=16, existing_ids:List[str]=[], 
         charset:str=CHAR_UPPERCASE+CHAR_LOWERCASE, attempts:int=24):
     random_length = max(length - len(prefix), 0)
     for _ in range(attempts):
@@ -47,10 +51,25 @@ def generate_id(prefix:str="", length:int=16, existing_ids:list[str]=[],
     raise ValueError(f"Could not generate ID unique from '{existing_ids}' "
         f"using values '{charset}' and length of '{length}'.")
 
-def wait(inputs:list[VALID_CHANNELS])->list[VALID_CHANNELS]:
+def wait(inputs:List[VALID_CHANNELS])->List[VALID_CHANNELS]:
+    if os.name == 'nt':
+        return wait_windows(inputs)
+    return wait_linux(inputs)
+
+def wait_windows(inputs:List[VALID_CHANNELS])->List[VALID_CHANNELS]:
+    all_connections = [i for i in inputs if type(i) is Connection] \
+        + [i for i in inputs if type(i) is PipeConnection] \
+        + [i._reader for i in inputs if type(i) is Queue]
+    ready = multi_wait(all_connections)
+    ready_inputs = [i for i in inputs if \
+        (type(i) is Connection and i in ready) \
+        or (type(i) is PipeConnection and i in ready) \
+        or (type(i) is Queue and i._reader in ready)]
+    return ready_inputs
+
+def wait_linux(inputs:List[VALID_CHANNELS])->List[VALID_CHANNELS]:
     all_connections = [i for i in inputs if type(i) is Connection] \
         + [i._reader for i in inputs if type(i) is Queue]
-
     ready = multi_wait(all_connections)
     ready_inputs = [i for i in inputs if \
         (type(i) is Connection and i in ready) \
@@ -72,7 +91,6 @@ def _get_file_sha256(file_path):
 def get_file_hash(file_path:str, hash:str):
     check_type(hash, str)
 
-    import os
     valid_existing_file_path(file_path)
 
     valid_hashes = {
@@ -80,7 +98,7 @@ def get_file_hash(file_path:str, hash:str):
     }
     if hash not in valid_hashes:
         raise KeyError(f"Cannot use hash '{hash}'. Valid are "
-            "'{list(valid_hashes.keys())}")
+            f"'{list(valid_hashes.keys())}")
 
     return valid_hashes[hash](file_path)
 
@@ -169,7 +187,7 @@ def read_notebook(filepath:str):
     with open(filepath, 'r') as read_file:
         return json.load(read_file)
 
-def write_notebook(source:dict[str,Any], filename:str):
+def write_notebook(source:Dict[str,Any], filename:str):
     """
     Writes the given notebook source code to a given filename.
 
@@ -183,10 +201,10 @@ def write_notebook(source:dict[str,Any], filename:str):
         json.dump(source, job_file)
 
 # Adapted from: https://github.com/rasmunk/notebook_parameterizer
-def parameterize_jupyter_notebook(jupyter_notebook:dict[str,Any], 
-        parameters:dict[str,Any], expand_env_values:bool=False)->dict[str,Any]:
+def parameterize_jupyter_notebook(jupyter_notebook:Dict[str,Any], 
+        parameters:Dict[str,Any], expand_env_values:bool=False)->Dict[str,Any]:
     nbformat.validate(jupyter_notebook)
-    check_type(parameters, dict)
+    check_type(parameters, Dict)
 
     if jupyter_notebook["nbformat"] != 4:
         raise Warning(
@@ -256,10 +274,10 @@ def parameterize_jupyter_notebook(jupyter_notebook:dict[str,Any],
 
     return output_notebook
 
-def parameterize_python_script(script:list[str], parameters:dict[str,Any], 
-        expand_env_values:bool=False)->dict[str,Any]:
+def parameterize_python_script(script:List[str], parameters:Dict[str,Any], 
+        expand_env_values:bool=False)->Dict[str,Any]:
     check_script(script)
-    check_type(parameters, dict)
+    check_type(parameters, Dict)
 
     output_script = copy.deepcopy(script)
 
@@ -302,8 +320,8 @@ def print_debug(print_target, debug_level, msg, level)->None:
                 status = "WARNING"
             print(f"{status}: {msg}", file=print_target)
 
-def replace_keywords(old_dict:dict[str,str], job_id:str, src_path:str, 
-            monitor_base:str)->dict[str,str]:
+def replace_keywords(old_dict:Dict[str,str], job_id:str, src_path:str, 
+            monitor_base:str)->Dict[str,str]:
     """Function to replace all MEOW magic words in a dictionary with dynamic 
     values."""
     new_dict = {}
@@ -332,8 +350,8 @@ def replace_keywords(old_dict:dict[str,str], job_id:str, src_path:str,
 
     return new_dict
 
-def create_event(event_type:str, path:str, rule:Any, extras:dict[Any,Any]={}
-        )->dict[Any,Any]:
+def create_event(event_type:str, path:str, rule:Any, extras:Dict[Any,Any]={}
+        )->Dict[Any,Any]:
     """Function to create a MEOW dictionary."""
     return {
         **extras, 
@@ -343,7 +361,7 @@ def create_event(event_type:str, path:str, rule:Any, extras:dict[Any,Any]={}
     }
 
 def create_watchdog_event(path:str, rule:Any, base:str, hash:str, 
-            extras:dict[Any,Any]={})->dict[Any,Any]:
+            extras:Dict[Any,Any]={})->Dict[Any,Any]:
     """Function to create a MEOW event dictionary."""
     return create_event(
         EVENT_TYPE_WATCHDOG, 
@@ -358,8 +376,8 @@ def create_watchdog_event(path:str, rule:Any, base:str, hash:str,
         }
     )
 
-def create_job(job_type:str, event:dict[str,Any], extras:dict[Any,Any]={}
-        )->dict[Any,Any]:
+def create_job(job_type:str, event:Dict[str,Any], extras:Dict[Any,Any]={}
+        )->Dict[Any,Any]:
     """Function to create a MEOW job dictionary."""
     job_dict = {
         #TODO compress event?
@@ -376,7 +394,7 @@ def create_job(job_type:str, event:dict[str,Any], extras:dict[Any,Any]={}
 
     return {**extras, **job_dict}
 
-def lines_to_string(lines:list[str])->str:
+def lines_to_string(lines:List[str])->str:
     """Function to convert a list of str lines, into one continuous string 
     separated by newline characters"""
     return "\n".join(lines)

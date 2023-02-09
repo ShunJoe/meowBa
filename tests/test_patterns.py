@@ -245,7 +245,10 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor identifies expected events in sub directories
     def testMonitoring(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         recipe = JupyterNotebookRecipe(
             "recipe_one", BAREBONES_NOTEBOOK)
@@ -304,7 +307,10 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor identifies fake events for retroactive patterns
     def testMonitoringRetroActive(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         recipe = JupyterNotebookRecipe(
             "recipe_one", BAREBONES_NOTEBOOK)
@@ -368,10 +374,16 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor get_patterns function
     def testMonitorGetPatterns(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         pattern_two = FileEventPattern(
-            "pattern_two", "start/B.txt", "recipe_two", "infile", 
+            "pattern_two", 
+            os.path.join("start", "B.txt"), 
+            "recipe_two", 
+            "infile", 
             parameters={})
 
         wm = WatchdogMonitor(
@@ -395,10 +407,16 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor add_pattern function
     def testMonitorAddPattern(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         pattern_two = FileEventPattern(
-            "pattern_two", "start/B.txt", "recipe_two", "infile", 
+            "pattern_two", 
+            os.path.join("start", "B.txt"), 
+            "recipe_two", 
+            "infile", 
             parameters={})
 
         wm = WatchdogMonitor(
@@ -440,10 +458,16 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor update_patterns function
     def testMonitorUpdatePattern(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         pattern_two = FileEventPattern(
-            "pattern_two", "start/B.txt", "recipe_two", "infile", 
+            "pattern_two", 
+            os.path.join("start", "B.txt"), 
+            "recipe_two", 
+            "infile", 
             parameters={})
 
         wm = WatchdogMonitor(
@@ -502,10 +526,16 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor remove_patterns function
     def testMonitorRemovePattern(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         pattern_two = FileEventPattern(
-            "pattern_two", "start/B.txt", "recipe_two", "infile", 
+            "pattern_two", 
+            os.path.join("start", "B.txt"), 
+            "recipe_two", 
+            "infile", 
             parameters={})
 
         wm = WatchdogMonitor(
@@ -707,10 +737,16 @@ class CorrectnessTests(unittest.TestCase):
     # Test WatchdogMonitor get_rules function
     def testMonitorGetRules(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={})
         pattern_two = FileEventPattern(
-            "pattern_two", "start/B.txt", "recipe_two", "infile", 
+            "pattern_two", 
+            os.path.join("start", "B.txt"), 
+            "recipe_two", 
+            "infile", 
             parameters={})
         recipe_one = JupyterNotebookRecipe(
             "recipe_one", BAREBONES_NOTEBOOK)

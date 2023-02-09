@@ -8,7 +8,8 @@ Author(s): David Marchant
 from datetime import datetime
 from inspect import signature
 from os.path import sep, exists, isfile, isdir, dirname
-from typing import Any, _SpecialForm, Union, Tuple, get_origin, get_args
+from typing import Any, _SpecialForm, Union, Tuple, Type, Dict, List, \
+    get_origin, get_args
 
 from core.correctness.vars import VALID_PATH_CHARS, get_not_imp_msg, \
     EVENT_TYPE, EVENT_PATH, JOB_EVENT, JOB_TYPE, JOB_ID, JOB_PATTERN, \
@@ -33,7 +34,7 @@ WATCHDOG_EVENT_KEYS = {
 # Required keys in job dict
 JOB_KEYS = {
     JOB_TYPE: str,
-    JOB_EVENT: dict,
+    JOB_EVENT: Dict,
     JOB_ID: str,
     JOB_PATTERN: Any,
     JOB_RECIPE: Any,
@@ -42,7 +43,7 @@ JOB_KEYS = {
     JOB_CREATE_TIME: datetime,
 }
 
-def check_type(variable:Any, expected_type:type, alt_types:list[type]=[], 
+def check_type(variable:Any, expected_type:Type, alt_types:List[Type]=[], 
         or_none:bool=False)->None:
     """Checks if a given variable is of the expected type. Raises TypeError or
     ValueError as appropriate if any issues are encountered."""
@@ -52,6 +53,11 @@ def check_type(variable:Any, expected_type:type, alt_types:list[type]=[],
     if get_origin(expected_type) is Union:
         type_list = list(get_args(expected_type))
     type_list = type_list + alt_types
+#    # If we have any types from typing, then update to allow checks against 
+#    # their base types too
+#    for t in type_list:
+#        if get_origin(t):
+#            type_list.append(get_origin(t))
 
     # Only accept None if explicitly allowed
     if variable is None:
@@ -130,16 +136,16 @@ def valid_string(variable:str, valid_chars:str, min_length:int=1)->None:
                 "%s" % (char, valid_chars)
             )
 
-def valid_dict(variable:dict[Any, Any], key_type:type, value_type:type, 
-        required_keys:list[Any]=[], optional_keys:list[Any]=[], 
+def valid_dict(variable:Dict[Any, Any], key_type:Type, value_type:Type, 
+        required_keys:List[Any]=[], optional_keys:List[Any]=[], 
         strict:bool=True, min_length:int=1)->None:
     """Checks that a given dictionary is valid. Key and Value types are 
     enforced, as are required and optional keys. Will raise ValueError, 
     TypeError or KeyError depending on the problem encountered."""
     # Validate inputs
-    check_type(variable, dict)
-    check_type(key_type, type, alt_types=[_SpecialForm])
-    check_type(value_type, type, alt_types=[_SpecialForm])
+    check_type(variable, Dict)
+    check_type(key_type, Type, alt_types=[_SpecialForm])
+    check_type(value_type, Type, alt_types=[_SpecialForm])
     check_type(required_keys, list)
     check_type(optional_keys, list)
     check_type(strict, bool)
@@ -172,11 +178,11 @@ def valid_dict(variable:dict[Any, Any], key_type:type, value_type:type,
                 raise ValueError(f"Unexpected key '{k}' should not be present "
                     f"in dict '{variable}'")
 
-def valid_list(variable:list[Any], entry_type:type,
-        alt_types:list[type]=[], min_length:int=1)->None:
+def valid_list(variable:List[Any], entry_type:Type,
+        alt_types:List[Type]=[], min_length:int=1)->None:
     """Checks that a given list is valid. Value types are checked and a 
     ValueError or TypeError is raised if a problem is encountered."""
-    check_type(variable, list)
+    check_type(variable, List)
 
     # Check length meets minimum
     if len(variable) < min_length:
@@ -256,11 +262,11 @@ def setup_debugging(print:Any=None, logging:int=0)->Tuple[Any,int]:
 
     return print, logging
 
-def valid_meow_dict(meow_dict:dict[str,Any], msg:str, 
-        keys:dict[str,type])->None:
+def valid_meow_dict(meow_dict:Dict[str,Any], msg:str, 
+        keys:Dict[str,Type])->None:
     """Check given dictionary expresses a meow construct. This won't do much 
     directly, but is called by more specific validation functions."""
-    check_type(meow_dict, dict)
+    check_type(meow_dict, Dict)
     # Check we have all the required keys, and they are all of the expected 
     # type
     for key, value_type in keys.items():
@@ -268,13 +274,13 @@ def valid_meow_dict(meow_dict:dict[str,Any], msg:str,
             raise KeyError(f"{msg} require key '{key}'")
         check_type(meow_dict[key], value_type)
 
-def valid_event(event:dict[str,Any])->None:
+def valid_event(event:Dict[str,Any])->None:
     """Check that a given dict expresses a meow event."""
     valid_meow_dict(event, "Event", EVENT_KEYS)
 
-def valid_job(job:dict[str,Any])->None:
+def valid_job(job:Dict[str,Any])->None:
     """Check that a given dict expresses a meow job."""
     valid_meow_dict(job, "Job", JOB_KEYS)
 
-def valid_watchdog_event(event:dict[str,Any])->None:
+def valid_watchdog_event(event:Dict[str,Any])->None:
     valid_meow_dict(event, "Watchdog event", WATCHDOG_EVENT_KEYS)

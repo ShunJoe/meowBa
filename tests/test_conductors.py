@@ -2,6 +2,8 @@
 import os
 import unittest
 
+from typing import Dict
+
 from core.correctness.vars import JOB_TYPE_PYTHON, SHA256, JOB_PARAMETERS, \
     JOB_HASH, PYTHON_FUNC, PYTHON_OUTPUT_DIR, PYTHON_EXECUTION_BASE, JOB_ID, \
     META_FILE, PARAMS_FILE, JOB_STATUS, JOB_ERROR, \
@@ -108,7 +110,7 @@ class MeowTests(unittest.TestCase):
         meta_path = os.path.join(output_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
         status = read_yaml(meta_path)
-        self.assertIsInstance(status, dict)
+        self.assertIsInstance(status, Dict)
         self.assertIn(JOB_STATUS, status)
         self.assertEqual(status[JOB_STATUS], STATUS_DONE)
 
@@ -196,7 +198,7 @@ class MeowTests(unittest.TestCase):
         meta_path = os.path.join(output_dir, META_FILE)
         self.assertTrue(os.path.exists(meta_path))
         status = read_yaml(meta_path)
-        self.assertIsInstance(status, dict)
+        self.assertIsInstance(status, Dict)
         self.assertIn(JOB_STATUS, status)
         self.assertEqual(status[JOB_STATUS], STATUS_DONE)
 

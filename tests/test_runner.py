@@ -121,10 +121,13 @@ class MeowTests(unittest.TestCase):
     # Test single meow papermill job execution
     def testMeowRunnerPapermillExecution(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={
                 "extra":"A line from a test Pattern",
-                "outfile":"{VGRID}/output/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "output", "{FILENAME}")
             })
         recipe = JupyterNotebookRecipe(
             "recipe_one", APPENDING_NOTEBOOK)
@@ -205,16 +208,19 @@ class MeowTests(unittest.TestCase):
     # Test meow papermill job chaining within runner
     def testMeowRunnerLinkedPapermillExecution(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={
                 "extra":"A line from Pattern 1",
-                "outfile":"{VGRID}/middle/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "middle", "{FILENAME}")
             })
         pattern_two = FileEventPattern(
-            "pattern_two", "middle/A.txt", "recipe_one", "infile", 
+            "pattern_two", os.path.join("middle", "A.txt"), "recipe_one", "infile", 
             parameters={
                 "extra":"A line from Pattern 2",
-                "outfile":"{VGRID}/output/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "output", "{FILENAME}")
             })
         recipe = JupyterNotebookRecipe(
             "recipe_one", APPENDING_NOTEBOOK)
@@ -314,10 +320,10 @@ class MeowTests(unittest.TestCase):
     # Test single meow python job execution
     def testMeowRunnerPythonExecution(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", os.path.join("start", "A.txt"), "recipe_one", "infile", 
             parameters={
                 "num":10000,
-                "outfile":"{VGRID}/output/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "output", "{FILENAME}")
             })
         recipe = PythonRecipe(
             "recipe_one", COMPLETE_PYTHON_SCRIPT
@@ -403,16 +409,22 @@ class MeowTests(unittest.TestCase):
     # Test meow python job chaining within runner
     def testMeowRunnerLinkedPythonExecution(self)->None:
         pattern_one = FileEventPattern(
-            "pattern_one", "start/A.txt", "recipe_one", "infile", 
+            "pattern_one", 
+            os.path.join("start", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={
                 "num":250,
-                "outfile":"{VGRID}/middle/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "middle", "{FILENAME}")
             })
         pattern_two = FileEventPattern(
-            "pattern_two", "middle/A.txt", "recipe_one", "infile", 
+            "pattern_two", 
+            os.path.join("middle", "A.txt"), 
+            "recipe_one", 
+            "infile", 
             parameters={
                 "num":40,
-                "outfile":"{VGRID}/output/{FILENAME}"
+                "outfile":os.path.join("{VGRID}", "output", "{FILENAME}")
             })
         recipe = PythonRecipe(
             "recipe_one", COMPLETE_PYTHON_SCRIPT

@@ -9,7 +9,7 @@ import os
 import shutil
 
 from datetime import datetime
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 
 from core.correctness.vars import JOB_TYPE_PYTHON, PYTHON_FUNC, JOB_STATUS, \
     STATUS_RUNNING, JOB_START_TIME, PYTHON_EXECUTION_BASE, JOB_ID, META_FILE, \
@@ -25,7 +25,7 @@ class LocalPythonConductor(BaseConductor):
     def __init__(self)->None:
         super().__init__()
 
-    def valid_execute_criteria(self, job:dict[str,Any])->Tuple[bool,str]:
+    def valid_execute_criteria(self, job:Dict[str,Any])->Tuple[bool,str]:
         """Function to determine given an job defintion, if this conductor can 
         process it or not. This conductor will accept any Python job type"""
         try:
@@ -36,7 +36,7 @@ class LocalPythonConductor(BaseConductor):
             pass
         return False, str(e)
 
-    def execute(self, job:dict[str,Any])->None:
+    def execute(self, job:Dict[str,Any])->None:
         valid_job(job)
 
         job_dir = os.path.join(job[PYTHON_EXECUTION_BASE], job[JOB_ID])

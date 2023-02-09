@@ -1,7 +1,7 @@
 
 import unittest
  
-from typing import Any, Union, Tuple
+from typing import Any, Union, Tuple, Dict
 
 from core.correctness.vars import SWEEP_STOP, SWEEP_JUMP, SWEEP_START
 from core.meow import BasePattern, BaseRecipe, BaseRule, BaseMonitor, \
@@ -67,7 +67,7 @@ class MeowTests(unittest.TestCase):
             def _is_valid_output(self, outputs:Any)->None:
                 pass
             def _is_valid_sweep(self, 
-                    sweep:dict[str,Union[int,float,complex]])->None:
+                    sweep:Dict[str,Union[int,float,complex]])->None:
                 pass
         FullPattern("name", "", "", "", "")
 
@@ -188,7 +188,7 @@ class MeowTests(unittest.TestCase):
             valid_recipe_two.name: valid_recipe_two
         }
         rules = create_rules(patterns, recipes)
-        self.assertIsInstance(rules, dict)
+        self.assertIsInstance(rules, Dict)
         self.assertEqual(len(rules), 2)
         for k, rule in rules.items():
             self.assertIsInstance(k, str)
@@ -229,9 +229,9 @@ class MeowTests(unittest.TestCase):
                 pass
             def stop(self):
                 pass
-            def _is_valid_patterns(self, patterns:dict[str,BasePattern])->None:
+            def _is_valid_patterns(self, patterns:Dict[str,BasePattern])->None:
                 pass
-            def _is_valid_recipes(self, recipes:dict[str,BaseRecipe])->None:
+            def _is_valid_recipes(self, recipes:Dict[str,BaseRecipe])->None:
                 pass
             def add_pattern(self, pattern:BasePattern)->None:
                 pass
@@ -274,7 +274,7 @@ class MeowTests(unittest.TestCase):
                 pass
             def _is_valid_inputs(self, inputs:Any)->None:
                 pass
-            def valid_handle_criteria(self, event:dict[str,Any]
+            def valid_handle_criteria(self, event:Dict[str,Any]
                     )->Tuple[bool,str]:
                 pass
 
@@ -292,10 +292,10 @@ class MeowTests(unittest.TestCase):
             TestConductor()
 
         class FullTestConductor(BaseConductor):
-            def execute(self, job:dict[str,Any])->None:
+            def execute(self, job:Dict[str,Any])->None:
                 pass
 
-            def valid_execute_criteria(self, job:dict[str,Any]
+            def valid_execute_criteria(self, job:Dict[str,Any]
                     )->Tuple[bool,str]:
                 pass
 

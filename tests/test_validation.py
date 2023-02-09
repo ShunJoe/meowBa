@@ -239,9 +239,10 @@ class CorrectnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             valid_non_existing_path("first")
 
-        make_dir("first/second")
+        test_path = os.path.join("first", "second")
+        make_dir(test_path)
         with self.assertRaises(ValueError):
-            valid_non_existing_path("first/second")
+            valid_non_existing_path(test_path)
 
     # TODO modify so tests for actual rule values
     # Test valid_event can check given event dictionary

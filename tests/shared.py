@@ -3,6 +3,8 @@ This file contains shared functions and variables used within multiple tests.
 
 Author(s): David Marchant
 """
+import os
+
 from core.functionality import make_dir, rmtree
 
 
@@ -30,8 +32,8 @@ COMPLETE_PYTHON_SCRIPT = [
     "import os",
     "# Setup parameters",
     "num = 1000",
-    "infile = 'somehere/particular'",
-    "outfile = 'nowhere/particular'",
+    "infile = 'somehere"+ os.path.sep +"particular'",
+    "outfile = 'nowhere"+ os.path.sep +"particular'",
     "",
     "with open(infile, 'r') as file:",
     "    s = float(file.read())",
@@ -131,9 +133,9 @@ APPENDING_NOTEBOOK = {
     "# The line to append\n",
     "extra = 'This line comes from a default pattern'\n",
     "# Data input file location\n",
-    "infile = 'start/alpha.txt'\n",
+    "infile = 'start"+ os.path.sep +"alpha.txt'\n",
     "# Output file location\n",
-    "outfile = 'first/alpha.txt'"
+    "outfile = 'first"+ os.path.sep +"alpha.txt'"
    ]
   },
   {
@@ -216,9 +218,9 @@ ADDING_NOTEBOOK = {
     "# Amount to add to data\n",
     "extra = 10\n",
     "# Data input file location\n",
-    "infile = 'example_data/data_0.npy'\n",
+    "infile = 'example_data"+ os.path.sep +"data_0.npy'\n",
     "# Output file location\n",
-    "outfile = 'standard_output/data_0.npy'"
+    "outfile = 'standard_output"+ os.path.sep +"data_0.npy'"
    ]
   },
   {

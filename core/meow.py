@@ -12,7 +12,7 @@ import itertools
 import sys
 
 from copy import deepcopy
-from typing import Any, Union, Tuple
+from typing import Any, Union, Tuple, Dict, List
 
 from core.correctness.vars import VALID_RECIPE_NAME_CHARS, \
     VALID_PATTERN_NAME_CHARS, VALID_RULE_NAME_CHARS, VALID_CHANNELS, \
@@ -28,11 +28,11 @@ class BaseRecipe:
     # Actual code to run
     recipe:Any
     # Possible parameters that could be overridden by a Pattern 
-    parameters:dict[str, Any]
+    parameters:Dict[str, Any]
     # Additional configuration options
-    requirements:dict[str, Any]
-    def __init__(self, name:str, recipe:Any, parameters:dict[str,Any]={}, 
-            requirements:dict[str,Any]={}):
+    requirements:Dict[str, Any]
+    def __init__(self, name:str, recipe:Any, parameters:Dict[str,Any]={}, 
+            requirements:Dict[str,Any]={}):
         """BaseRecipe Constructor. This will check that any class inheriting 
         from it implements its validation functions. It will then call these on
         the input parameters."""
@@ -84,14 +84,14 @@ class BasePattern:
     # An identifier of a recipe
     recipe:str
     # Parameters to be overridden in the recipe
-    parameters:dict[str,Any]
+    parameters:Dict[str,Any]
     # Parameters showing the potential outputs of a recipe
-    outputs:dict[str,Any]
+    outputs:Dict[str,Any]
     # A collection of variables to be swept over for job scheduling
-    sweep:dict[str,Any]
+    sweep:Dict[str,Any]
 
-    def __init__(self, name:str, recipe:str, parameters:dict[str,Any]={}, 
-            outputs:dict[str,Any]={}, sweep:dict[str,Any]={}):
+    def __init__(self, name:str, recipe:str, parameters:Dict[str,Any]={}, 
+            outputs:Dict[str,Any]={}, sweep:Dict[str,Any]={}):
         """BasePattern Constructor. This will check that any class inheriting 
         from it implements its validation functions. It will then call these on
         the input parameters."""
@@ -138,11 +138,11 @@ class BasePattern:
         be implemented by any child class."""
         pass
 
-    def _is_valid_sweep(self, sweep:dict[str,Union[int,float,complex]])->None:
+    def _is_valid_sweep(self, sweep:Dict[str,Union[int,float,complex]])->None:
         """Validation check for 'sweep' variable from main constructor. This 
         function is implemented to check for the types given in the signature, 
         and must be overridden if these differ."""
-        check_type(sweep, dict)
+        check_type(sweep, Dict)
         if not sweep:
             return
         for _, v in sweep.items():
@@ -175,7 +175,7 @@ class BasePattern:
                         "value where the end point is smaller than the start."
                     )
 
-    def expand_sweeps(self)->list[Tuple[str,Any]]:
+    def expand_sweeps(self)->List[Tuple[str,Any]]:
         """Function to get all combinations of sweep parameters"""
         values_dict = {}
         # get a collection of a individual sweep values
@@ -259,17 +259,17 @@ class BaseRule:
 
 class BaseMonitor:
     # A collection of patterns
-    _patterns: dict[str, BasePattern]
+    _patterns: Dict[str, BasePattern]
     # A collection of recipes
-    _recipes: dict[str, BaseRecipe]
+    _recipes: Dict[str, BaseRecipe]
     # A collection of rules derived from _patterns and _recipes
-    _rules: dict[str, BaseRule]
+    _rules: Dict[str, BaseRule]
     # A channel for sending messages to the runner. Note that this is not 
     # initialised within the constructor, but within the runner when passed the
     # monitor is passed to it.
     to_runner: VALID_CHANNELS
-    def __init__(self, patterns:dict[str,BasePattern], 
-            recipes:dict[str,BaseRecipe])->None:
+    def __init__(self, patterns:Dict[str,BasePattern], 
+            recipes:Dict[str,BaseRecipe])->None:
         """BaseMonitor Constructor. This will check that any class inheriting 
         from it implements its validation functions. It will then call these on
         the input parameters."""
@@ -302,12 +302,12 @@ class BaseMonitor:
             raise TypeError(msg)
         return object.__new__(cls)
 
-    def _is_valid_patterns(self, patterns:dict[str,BasePattern])->None:
+    def _is_valid_patterns(self, patterns:Dict[str,BasePattern])->None:
         """Validation check for 'patterns' variable from main constructor. Must
         be implemented by any child class."""
         pass
 
-    def _is_valid_recipes(self, recipes:dict[str,BaseRecipe])->None:
+    def _is_valid_recipes(self, recipes:Dict[str,BaseRecipe])->None:
         """Validation check for 'recipes' variable from main constructor. Must 
         be implemented by any child class."""
         pass
@@ -337,7 +337,7 @@ class BaseMonitor:
         implemented by any child process."""
         pass
 
-    def get_patterns(self)->dict[str,BasePattern]:
+    def get_patterns(self)->Dict[str,BasePattern]:
         """Function to get a dictionary of all current pattern definitions. 
         Must be implemented by any child process."""
         pass
@@ -357,12 +357,12 @@ class BaseMonitor:
         implemented by any child process."""
         pass
 
-    def get_recipes(self)->dict[str,BaseRecipe]:
+    def get_recipes(self)->Dict[str,BaseRecipe]:
         """Function to get a dictionary of all current recipe definitions. 
         Must be implemented by any child process."""
         pass
 
-    def get_rules(self)->dict[str,BaseRule]:
+    def get_rules(self)->Dict[str,BaseRule]:
         """Function to get a dictionary of all current rule definitions. 
         Must be implemented by any child process."""
         pass
@@ -387,12 +387,12 @@ class BaseHandler:
             raise TypeError(msg)
         return object.__new__(cls)
 
-    def valid_handle_criteria(self, event:dict[str,Any])->Tuple[bool,str]:
+    def valid_handle_criteria(self, event:Dict[str,Any])->Tuple[bool,str]:
         """Function to determine given an event defintion, if this handler can 
         process it or not. Must be implemented by any child process."""
         pass
 
-    def handle(self, event:dict[str,Any])->None:
+    def handle(self, event:Dict[str,Any])->None:
         """Function to handle a given event. Must be implemented by any child 
         process."""
         pass
@@ -413,28 +413,28 @@ class BaseConductor:
             raise TypeError(msg)
         return object.__new__(cls)
 
-    def valid_execute_criteria(self, job:dict[str,Any])->Tuple[bool,str]:
+    def valid_execute_criteria(self, job:Dict[str,Any])->Tuple[bool,str]:
         """Function to determine given an job defintion, if this conductor can 
         process it or not. Must be implemented by any child process."""
         pass
 
-    def execute(self, job:dict[str,Any])->None:
+    def execute(self, job:Dict[str,Any])->None:
         """Function to execute a given job. Must be implemented by any child 
         process."""
         pass
 
 
-def create_rules(patterns:Union[dict[str,BasePattern],list[BasePattern]], 
-        recipes:Union[dict[str,BaseRecipe],list[BaseRecipe]],
-        new_rules:list[BaseRule]=[])->dict[str,BaseRule]:
+def create_rules(patterns:Union[Dict[str,BasePattern],List[BasePattern]], 
+        recipes:Union[Dict[str,BaseRecipe],List[BaseRecipe]],
+        new_rules:List[BaseRule]=[])->Dict[str,BaseRule]:
     """Function to create any valid rules from a given collection of patterns 
     and recipes. All inbuilt rule types are considered, with additional 
     definitions provided through the 'new_rules' variable. Note that any 
     provided pattern and recipe dictionaries must be keyed with the 
     corresponding pattern and recipe names."""
     # Validation of inputs
-    check_type(patterns, dict, alt_types=[list])
-    check_type(recipes, dict, alt_types=[list])
+    check_type(patterns, Dict, alt_types=[List])
+    check_type(recipes, Dict, alt_types=[List])
     valid_list(new_rules, BaseRule, min_length=0)
 
     # Convert a pattern list to a dictionary
@@ -477,7 +477,7 @@ def create_rules(patterns:Union[dict[str,BasePattern],list[BasePattern]],
     return generated_rules
 
 def create_rule(pattern:BasePattern, recipe:BaseRecipe, 
-        new_rules:list[BaseRule]=[])->BaseRule:
+        new_rules:List[BaseRule]=[])->BaseRule:
     """Function to create a valid rule from a given pattern and recipe. All 
     inbuilt rule types are considered, with additional definitions provided 
     through the 'new_rules' variable."""

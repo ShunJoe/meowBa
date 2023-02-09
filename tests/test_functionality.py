@@ -383,28 +383,38 @@ class CorrectnessTests(unittest.TestCase):
         }
 
         replaced = replace_keywords(
-            test_dict, "job_id", "base/src/dir/file.ext", "base/monitor/dir")
+            test_dict, 
+            "job_id", 
+            os.path.join("base", "src", "dir", "file.ext"), 
+            os.path.join("base", "monitor", "dir")
+        )
 
         self.assertIsInstance(replaced, dict)
         self.assertEqual(len(test_dict.keys()), len(replaced.keys()))
         for k in test_dict.keys():
             self.assertIn(k, replaced)
 
-        self.assertEqual(replaced["A"], "--base/src/dir/file.ext--")
-        self.assertEqual(replaced["B"], "--../../src/dir/file.ext--")
-        self.assertEqual(replaced["C"], "--base/src/dir--")
-        self.assertEqual(replaced["D"], "--../../src/dir--")
+        self.assertEqual(replaced["A"], 
+            os.path.join("--base", "src", "dir", "file.ext--"))
+        self.assertEqual(replaced["B"], 
+            os.path.join("--..", "..", "src", "dir", "file.ext--"))
+        self.assertEqual(replaced["C"], 
+            os.path.join("--base", "src", "dir--"))
+        self.assertEqual(replaced["D"], 
+            os.path.join("--..", "..", "src", "dir--"))
         self.assertEqual(replaced["E"], "--file.ext--")
         self.assertEqual(replaced["F"], "--file--")
-        self.assertEqual(replaced["G"], "--base/monitor/dir--")
+        self.assertEqual(replaced["G"], 
+            os.path.join("--base", "monitor", "dir--"))
         self.assertEqual(replaced["H"], "--.ext--")
         self.assertEqual(replaced["I"], "--job_id--")
         self.assertEqual(replaced["J"], 
-            "--base/src/dir/file.ext-base/src/dir/file.ext--")
-        self.assertEqual(replaced["K"], "base/src/dir/file.ext")
+            os.path.join("--base", "src", "dir", "file.ext-base", "src", "dir", "file.ext--"))
+        self.assertEqual(replaced["K"], 
+            os.path.join("base", "src", "dir", "file.ext"))
         self.assertEqual(replaced["L"], 
-            "--base/src/dir/file.ext-../../src/dir/file.ext-base/src/dir-"
-            "../../src/dir-file.ext-file-base/monitor/dir-.ext-job_id--")
+            os.path.join("--base", "src", "dir", "file.ext-..", "..", "src", "dir", "file.ext-base", "src", "dir-"
+            "..", "..", "src", "dir-file.ext-file-base", "monitor", "dir-.ext-job_id--"))
         self.assertEqual(replaced["M"], "A") 
         self.assertEqual(replaced["N"], 1) 
 
@@ -498,30 +508,31 @@ data"""
             '"metadata": {}, "outputs": [], "source": ["# Default parameters '
             'values\\n", "# The line to append\\n", "extra = \'This line '
             'comes from a default pattern\'\\n", "# Data input file '
-            'location\\n", "infile = \'start/alpha.txt\'\\n", "# Output file '
-            'location\\n", "outfile = \'first/alpha.txt\'"]}, {"cell_type": '
+            'location\\n", "infile = \'start'+ os.path.sep +'alpha.txt\'\\n", '
+            '"# Output file location\\n", "outfile = \'first'+ os.path.sep 
+            +'alpha.txt\'"]}, {"cell_type": "code", "execution_count": null, '
+            '"metadata": {}, "outputs": [], "source": ["# load in dataset. '
+            'This should be a text file\\n", "with open(infile) as '
+            'input_file:\\n", "    data = input_file.read()"]}, {"cell_type": '
             '"code", "execution_count": null, "metadata": {}, "outputs": [], '
-            '"source": ["# load in dataset. This should be a text file\\n", '
-            '"with open(infile) as input_file:\\n", "    data = '
-            'input_file.read()"]}, {"cell_type": "code", "execution_count": '
-            'null, "metadata": {}, "outputs": [], "source": ["# Append the '
-            'line\\n", "appended = data + \'\\\\n\' + extra"]}, {"cell_type": '
-            '"code", "execution_count": null, "metadata": {}, "outputs": [], '
-            '"source": ["import os\\n", "\\n", "# Create output directory if '
-            'it doesn\'t exist\\n", "output_dir_path = '
-            'os.path.dirname(outfile)\\n", "\\n", "if output_dir_path:\\n", '
-            '"    os.makedirs(output_dir_path, exist_ok=True)\\n", "\\n", "# '
-            'Save added array as new dataset\\n", "with open(outfile, \'w\') '
-            'as output_file:\\n", "   output_file.write(appended)"]}], '
-            '"metadata": {"kernelspec": {"display_name": "Python 3", '
-            '"language": "python", "name": "python3"}, "language_info": '
-            '{"codemirror_mode": {"name": "ipython", "version": 3}, '
-            '"file_extension": ".py", "mimetype": "text/x-python", "name": '
-            '"python", "nbconvert_exporter": "python", "pygments_lexer": '
-            '"ipython3", "version": "3.10.6 (main, Nov 14 2022, 16:10:14) '
-            '[GCC 11.3.0]"}, "vscode": {"interpreter": {"hash": '
-            '"916dbcbb3f70747c44a77c7bcd40155683ae19c65e1c03b4aa3499c5328201f1'
-            '"}}}, "nbformat": 4, "nbformat_minor": 4}'
+            '"source": ["# Append the line\\n", "appended = data + \'\\\\n\' '
+            '+ extra"]}, {"cell_type": "code", "execution_count": null, '
+            '"metadata": {}, "outputs": [], "source": ["import os\\n", "\\n", '
+            '"# Create output directory if it doesn\'t exist\\n", '
+            '"output_dir_path = os.path.dirname(outfile)\\n", "\\n", '
+            '"if output_dir_path:\\n", "    os.makedirs(output_dir_path, '
+            'exist_ok=True)\\n", "\\n", "# Save added array as new '
+            'dataset\\n", "with open(outfile, \'w\') as output_file:\\n", "   '
+            'output_file.write(appended)"]}], "metadata": {"kernelspec": '
+            '{"display_name": "Python 3", "language": "python", "name": '
+            '"python3"}, "language_info": {"codemirror_mode": {"name": '
+            '"ipython", "version": 3}, "file_extension": ".py", "mimetype": '
+            '"text/x-python", "name": "python", "nbconvert_exporter": '
+            '"python", "pygments_lexer": "ipython3", "version": "3.10.6 '
+            '(main, Nov 14 2022, 16:10:14) [GCC 11.3.0]"}, "vscode": '
+            '{"interpreter": {"hash": "916dbcbb3f70747c44a77c7bcd40155683ae19c'
+            '65e1c03b4aa3499c5328201f1"}}}, "nbformat": 4, "nbformat_minor": '
+            '4}'
         ]
 
         self.assertEqual(data, expected_bytes)
