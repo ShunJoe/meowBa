@@ -86,7 +86,7 @@ JOB_TYPE = "job_type"
 JOB_TYPE_PYTHON = "python"
 JOB_TYPE_PAPERMILL = "papermill"
 PYTHON_FUNC = "func"
-
+BACKUP_JOB_ERROR_FILE = "ERROR.log"
 JOB_TYPES = {
     JOB_TYPE_PAPERMILL: [
         "base.ipynb",

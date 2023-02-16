@@ -12,11 +12,11 @@ from datetime import datetime
 from typing import Any, Tuple, Dict
 
 from core.correctness.vars import JOB_TYPE_PYTHON, PYTHON_FUNC, JOB_STATUS, \
-    STATUS_RUNNING, JOB_START_TIME, JOB_ID, META_FILE, \
+    STATUS_RUNNING, JOB_START_TIME, META_FILE, BACKUP_JOB_ERROR_FILE, \
     STATUS_DONE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, \
     JOB_TYPE, JOB_TYPE_PAPERMILL, DEFAULT_JOB_QUEUE_DIR, DEFAULT_JOB_OUTPUT_DIR
 from core.correctness.validation import valid_job, valid_dir_path
-from core.functionality import read_yaml, write_yaml, make_dir
+from core.functionality import read_yaml, write_yaml, make_dir, write_file
 from core.meow import BaseConductor
 
 
@@ -38,11 +38,15 @@ class LocalPythonConductor(BaseConductor):
         process it or not. This conductor will accept any Python job type"""
         try:
             valid_job(job)
-            if job[JOB_TYPE] in [JOB_TYPE_PYTHON, JOB_TYPE_PAPERMILL]:
+            msg = ""
+            if job[JOB_TYPE] not in [JOB_TYPE_PYTHON, JOB_TYPE_PAPERMILL]:
+                msg = "Job type was not in python or papermill. "
+            if msg:
+                return False, msg
+            else:
                 return True, ""
         except Exception as e:
-            pass
-        return False, str(e)
+            return False, str(e)
 
     def execute(self, job_dir:str)->None:
         """Function to actually execute a Python job. This will read job 
@@ -52,41 +56,53 @@ class LocalPythonConductor(BaseConductor):
         more detailed feedback."""
         valid_dir_path(job_dir, must_exist=True)
 
-        meta_file = os.path.join(job_dir, META_FILE)
-        job = read_yaml(meta_file)
-        valid_job(job)
-
-        # update the status file with running status
-        job[JOB_STATUS] = STATUS_RUNNING
-        job[JOB_START_TIME] = datetime.now()
-        write_yaml(job, meta_file)
-
-        # execute the job
+        # Test our job parameters. Even if its gibberish, we still move to 
+        # output
+        abort = False
         try:
-            job_function = job[PYTHON_FUNC]
-            job_function(job_dir)
-
-            # get up to date job data
+            meta_file = os.path.join(job_dir, META_FILE)
             job = read_yaml(meta_file)
+            valid_job(job)
 
-            # Update the status file with the finalised status
-            job[JOB_STATUS] = STATUS_DONE
-            job[JOB_END_TIME] = datetime.now()
+            # update the status file with running status
+            job[JOB_STATUS] = STATUS_RUNNING
+            job[JOB_START_TIME] = datetime.now()
             write_yaml(job, meta_file)
 
         except Exception as e:
-            # get up to date job data
-            job = read_yaml(meta_file)
+            # If something has gone wrong at this stage then its bad, so we 
+            # need to make our own error file
+            error_file = os.path.join(job_dir, BACKUP_JOB_ERROR_FILE)
+            write_file(f"Recieved incorrectly setup job.\n\n{e}", error_file)
+            abort = True
 
-            # Update the status file with the error status. Don't overwrite any
-            # more specific error messages already created
-            if JOB_STATUS not in job:
-                job[JOB_STATUS] = STATUS_FAILED
-            if JOB_END_TIME not in job:
+        # execute the job
+        if not abort:
+            try:
+                job_function = job[PYTHON_FUNC]
+                job_function(job_dir)
+
+                # get up to date job data
+                job = read_yaml(meta_file)
+
+                # Update the status file with the finalised status
+                job[JOB_STATUS] = STATUS_DONE
                 job[JOB_END_TIME] = datetime.now()
-            if JOB_ERROR not in job:
-                job[JOB_ERROR] = f"Job execution failed. {e}"
-            write_yaml(job, meta_file)
+                write_yaml(job, meta_file)
+
+            except Exception as e:
+                # get up to date job data
+                job = read_yaml(meta_file)
+
+                # Update the status file with the error status. Don't overwrite
+                # any more specific error messages already created
+                if JOB_STATUS not in job:
+                    job[JOB_STATUS] = STATUS_FAILED
+                if JOB_END_TIME not in job:
+                    job[JOB_END_TIME] = datetime.now()
+                if JOB_ERROR not in job:
+                    job[JOB_ERROR] = f"Job execution failed. {e}"
+                write_yaml(job, meta_file)
 
         # Move the contents of the execution directory to the final output 
         # directory. 

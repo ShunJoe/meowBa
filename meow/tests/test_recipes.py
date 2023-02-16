@@ -401,7 +401,44 @@ class JupyterNotebookTests(unittest.TestCase):
         self.assertEqual(len(os.listdir(TEST_JOB_QUEUE)), 0)
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 0)
 
-    #TODO Test handling criteria function
+    # Test handling criteria function
+    def testValidHandleCriteria(self)->None:
+        ph = PapermillHandler()
+
+        pattern = FileEventPattern(
+            "pattern_ne", "A", "recipe_one", "file_one")
+        recipe = JupyterNotebookRecipe(
+            "recipe_one", COMPLETE_NOTEBOOK)
+
+        rule = create_rule(pattern, recipe)
+
+        status, _ = ph.valid_handle_criteria({})
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria("")
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: "type",
+            EVENT_RULE: rule
+        })
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: EVENT_TYPE_WATCHDOG,
+            EVENT_RULE: "rule"
+        })
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: EVENT_TYPE_WATCHDOG,
+            EVENT_RULE: rule
+        })
+        self.assertTrue(status)
+
 
 class PythonTests(unittest.TestCase):
     def setUp(self)->None:
@@ -753,5 +790,45 @@ class PythonTests(unittest.TestCase):
 
         self.assertEqual(len(os.listdir(TEST_JOB_QUEUE)), 0)
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 0)
+
+    # Test handling criteria function
+    def testValidHandleCriteria(self)->None:
+        ph = PythonHandler()
+
+        pattern = FileEventPattern(
+            "pattern_one", "A", "recipe_one", "file_one")
+        recipe = PythonRecipe(
+            "recipe_one", BAREBONES_PYTHON_SCRIPT
+        )
+
+        rule = create_rule(pattern, recipe)
+
+        status, _ = ph.valid_handle_criteria({})
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria("")
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: "type",
+            EVENT_RULE: rule
+        })
+        self.assertFalse(status)
+
+        status, _ = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: EVENT_TYPE_WATCHDOG,
+            EVENT_RULE: "rule"
+        })
+        self.assertFalse(status)
+
+        status, s = ph.valid_handle_criteria({
+            EVENT_PATH: "path",
+            EVENT_TYPE: EVENT_TYPE_WATCHDOG,
+            EVENT_RULE: rule
+        })
+        self.assertTrue(status)
+
 
     # TODO test default parameter function execution

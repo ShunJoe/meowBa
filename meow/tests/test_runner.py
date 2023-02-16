@@ -430,7 +430,6 @@ class MeowTests(unittest.TestCase):
         runner.stop()
 
         job_dir = os.path.join(TEST_JOB_OUTPUT, job_id)
-        print(os.listdir(job_dir))
 
         metafile = os.path.join(job_dir, META_FILE)
         status = read_yaml(metafile)
