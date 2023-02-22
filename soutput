@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.10, pytest-7.2.1, pluggy-1.0.0
+rootdir: /home/shunjoe/baProject/meowBa/meow/tests
+collected 9 items
+
+test_conductors.py .........                                             [100%]
+
+============================== 9 passed in 6.56s ===============================

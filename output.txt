@@ -1,0 +1,2 @@
+execve("./file_createDelete.sh", ["./file_createDelete.sh"], 0x7ffffabe19c0 /* 20 vars */) = -1 ENOEXEC (Exec format error)
++++ exited with 1 +++
