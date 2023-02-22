@@ -14,16 +14,12 @@ def listComparison(OriginalList: list, NewList: list):
     removedList = [ "-" + x for x in OriginalList if x not in NewList] #if files get deleted
     return( removedList + differencesList)
 
-def fileWatcher(my_dir: str, pollTime: int):
+def fileWatcher(my_dir: str, pollTime: float):
     try:
+        previousFileList = fileInDirectory(my_dir)
         while True:
-            if 'watching' not in locals(): #Check if this is the first time the function has run
-                previousFileList = fileInDirectory(my_dir)
-                watching = 1
-                print('First Time')
-                print(previousFileList)
-            
-            time.sleep(pollTime)
+                      
+            #time.sleep(pollTime)
             
             newFileList = fileInDirectory(my_dir)
             
@@ -36,4 +32,4 @@ def fileWatcher(my_dir: str, pollTime: int):
         print ('interupted!')
             
 
-fileWatcher("./", 1)
+fileWatcher("./", 0.1)
