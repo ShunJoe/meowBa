@@ -1,23 +1,24 @@
 
-import io
 import unittest
 import os
 
 from datetime import datetime
 from typing import Any, Union
 
+from core.correctness.meow import valid_event, valid_job, valid_watchdog_event
 from core.correctness.validation import check_type, check_implementation, \
     valid_string, valid_dict, valid_list, valid_existing_file_path, \
-    valid_dir_path, valid_non_existing_path, valid_event, valid_job, \
-    setup_debugging, valid_watchdog_event, check_callable
+    valid_dir_path, valid_non_existing_path, check_callable
 from core.correctness.vars import VALID_NAME_CHARS, SHA256, EVENT_TYPE, \
     EVENT_PATH, JOB_TYPE, JOB_EVENT, JOB_ID, JOB_PATTERN, JOB_RECIPE, \
     JOB_RULE, JOB_STATUS, JOB_CREATE_TIME, EVENT_RULE, WATCHDOG_BASE, \
     WATCHDOG_HASH
-from core.functionality import make_dir
-from shared import setup, teardown, TEST_MONITOR_BASE
+from functionality.file_io import make_dir
+from functionality.meow import create_rule
+from shared import setup, teardown, TEST_MONITOR_BASE, valid_pattern_one, \
+    valid_recipe_one
 
-class CorrectnessTests(unittest.TestCase):
+class ValidationTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
         setup()
@@ -245,18 +246,35 @@ class CorrectnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             valid_non_existing_path(test_path)
 
-    # TODO modify so tests for actual rule values
+    # Test check_callable 
+    def testCheckCallable(self)->None:
+        check_callable(make_dir)
+        
+        with self.assertRaises(TypeError):
+            check_callable("a")
+
+class MeowTests(unittest.TestCase):
+    def setUp(self)->None:
+        super().setUp()
+        setup()
+
+    def tearDown(self)->None:
+        super().tearDown()
+        teardown()
+        
     # Test valid_event can check given event dictionary
     def testEventValidation(self)->None:
+        rule = create_rule(valid_pattern_one, valid_recipe_one)
+
         valid_event({
             EVENT_TYPE: "test", 
             EVENT_PATH: "path", 
-            EVENT_RULE: "rule"
+            EVENT_RULE: rule
         })
         valid_event({
             EVENT_TYPE: "anything", 
             EVENT_PATH: "path", 
-            EVENT_RULE: "rule",
+            EVENT_RULE: rule,
             "a": 1
         })
 
@@ -291,27 +309,14 @@ class CorrectnessTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             valid_job({})
 
-    # Test setup_debugging will create writeable location
-    def testSetupDebugging(self)->None:
-        stream = io.StringIO("")
-
-        target, level = setup_debugging(stream, 1)
-
-        self.assertIsInstance(target, io.StringIO)
-        self.assertIsInstance(level, int)
-
-        with self.assertRaises(TypeError):
-            setup_debugging("stream", 1)
-
-        with self.assertRaises(TypeError):
-            setup_debugging(stream, "1")
-
     # Test watchdog event dict
     def testWatchdogEventValidation(self)->None:
+        rule = create_rule(valid_pattern_one, valid_recipe_one)
+
         valid_watchdog_event({
             EVENT_TYPE: "test", 
             EVENT_PATH: "path", 
-            EVENT_RULE: "rule",
+            EVENT_RULE: rule,
             WATCHDOG_HASH: "hash",
             WATCHDOG_BASE: "base"
         })
@@ -339,10 +344,3 @@ class CorrectnessTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             valid_event({})
-
-    # Test check_callable 
-    def testCheckCallable(self)->None:
-        check_callable(make_dir)
-        
-        with self.assertRaises(TypeError):
-            check_callable("a")

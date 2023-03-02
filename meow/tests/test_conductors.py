@@ -11,11 +11,11 @@ from core.correctness.vars import JOB_TYPE_PYTHON, SHA256, JOB_PARAMETERS, \
     STATUS_DONE, JOB_TYPE_PAPERMILL, JOB_RECIPE, JOB_RULE, JOB_CREATE_TIME, \
     JOB_REQUIREMENTS, EVENT_PATH, EVENT_RULE, EVENT_TYPE, \
     EVENT_TYPE_WATCHDOG, get_base_file, get_result_file, get_job_file
-from core.functionality import get_file_hash, create_watchdog_event, \
-    create_job, make_dir, write_yaml, write_notebook, read_yaml, write_file, \
-    lines_to_string, read_file
-from core.meow import create_rule
 from conductors import LocalPythonConductor
+from functionality.file_io import read_file, read_yaml, write_file, \
+    write_notebook, write_yaml, lines_to_string, make_dir
+from functionality.hashing import get_file_hash
+from functionality.meow import create_watchdog_event, create_job, create_rule
 from patterns import FileEventPattern
 from recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     papermill_job_func
@@ -23,7 +23,6 @@ from recipes.python_recipe import PythonRecipe, python_job_func
 from shared import setup, teardown, TEST_MONITOR_BASE, APPENDING_NOTEBOOK, \
     TEST_JOB_OUTPUT, TEST_JOB_QUEUE, COMPLETE_PYTHON_SCRIPT, \
     BAREBONES_PYTHON_SCRIPT, BAREBONES_NOTEBOOK
-
 
 def failing_func():
     raise Exception("bad function")
@@ -407,7 +406,7 @@ class MeowTests(unittest.TestCase):
         error = read_file(error_file)
         self.assertEqual(error, 
             "Recieved incorrectly setup job.\n\n[Errno 2] No such file or "
-            f"directory: 'test_job_queue_dir/{job_dict[JOB_ID]}/job.yml'")
+            f"directory: 'test_job_queue_dir{os.path.sep}{job_dict[JOB_ID]}{os.path.sep}job.yml'")
 
     # Test LocalPythonConductor does not execute jobs with bad functions
     def testLocalPythonConductorBadFunc(self)->None:
@@ -678,7 +677,6 @@ class MeowTests(unittest.TestCase):
             JOB_CREATE_TIME: datetime.now(),
             JOB_REQUIREMENTS: python_rule.recipe.requirements
         })
-        print(s)
         self.assertFalse(status)
 
         status, s = lpc.valid_execute_criteria({
@@ -696,7 +694,6 @@ class MeowTests(unittest.TestCase):
             JOB_CREATE_TIME: datetime.now(),
             JOB_REQUIREMENTS: python_rule.recipe.requirements
         })
-        print(s)
         self.assertTrue(status)
 
         status, s = lpc.valid_execute_criteria({
@@ -714,7 +711,6 @@ class MeowTests(unittest.TestCase):
             JOB_CREATE_TIME: datetime.now(),
             JOB_REQUIREMENTS: papermill_rule.recipe.requirements
         })
-        print(s)
         self.assertTrue(status)
 
     # TODO test job status funcs

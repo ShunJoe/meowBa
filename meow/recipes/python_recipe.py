@@ -10,17 +10,21 @@ import sys
 
 from typing import Any, Tuple, Dict, List
 
+from core.base_recipe import BaseRecipe
+from core.base_handler import BaseHandler
+from core.correctness.meow import valid_event
 from core.correctness.validation import check_script, valid_string, \
-    valid_dict, valid_event, valid_dir_path, setup_debugging
+    valid_dict, valid_dir_path
 from core.correctness.vars import VALID_VARIABLE_NAME_CHARS, PYTHON_FUNC, \
     DEBUG_INFO, EVENT_TYPE_WATCHDOG, JOB_HASH, DEFAULT_JOB_QUEUE_DIR, \
     EVENT_RULE, EVENT_PATH, JOB_TYPE_PYTHON, WATCHDOG_HASH, JOB_PARAMETERS, \
     JOB_ID, WATCHDOG_BASE, META_FILE, \
     PARAMS_FILE, JOB_STATUS, STATUS_QUEUED, EVENT_TYPE, EVENT_RULE, \
     get_base_file
-from core.functionality import print_debug, create_job, replace_keywords, \
-    make_dir, write_yaml, write_file, lines_to_string, read_file_lines
-from core.meow import BaseRecipe, BaseHandler
+from functionality.debug import setup_debugging, print_debug
+from functionality.file_io import make_dir, read_file_lines, write_file, \
+    write_yaml, lines_to_string
+from functionality.meow import create_job, replace_keywords
 
 
 class PythonRecipe(BaseRecipe):
@@ -176,13 +180,14 @@ def python_job_func(job_dir):
     import os
     from datetime import datetime
     from io import StringIO
-    from core.functionality import write_yaml, read_yaml, \
-        get_file_hash, parameterize_python_script
     from core.correctness.vars import JOB_EVENT, JOB_ID, \
         EVENT_PATH, META_FILE, PARAMS_FILE, \
         JOB_STATUS, JOB_HASH, SHA256, STATUS_SKIPPED, JOB_END_TIME, \
         JOB_ERROR, STATUS_FAILED, get_base_file, \
         get_job_file, get_result_file
+    from functionality.file_io import read_yaml, write_yaml
+    from functionality.hashing import get_file_hash
+    from functionality.parameterisation import parameterize_python_script
 
     # Identify job files
     meta_file = os.path.join(job_dir, META_FILE)

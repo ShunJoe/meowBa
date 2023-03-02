@@ -6,17 +6,18 @@ import unittest
 from multiprocessing import Pipe
 from typing import Dict
 
+from core.correctness.meow import valid_job
 from core.correctness.vars import EVENT_TYPE, WATCHDOG_BASE, EVENT_RULE, \
     EVENT_TYPE_WATCHDOG, EVENT_PATH, SHA256, WATCHDOG_HASH, JOB_ID, \
     JOB_TYPE_PYTHON, JOB_PARAMETERS, JOB_HASH, PYTHON_FUNC, JOB_STATUS, \
     META_FILE, JOB_ERROR, \
     PARAMS_FILE, SWEEP_STOP, SWEEP_JUMP, SWEEP_START, JOB_TYPE_PAPERMILL, \
     get_base_file, get_job_file, get_result_file
-from core.correctness.validation import valid_job
-from core.functionality import get_file_hash, create_job, \
-    create_watchdog_event, make_dir, write_yaml, write_notebook, read_yaml, \
-    write_file, lines_to_string
-from core.meow import create_rules, create_rule
+from functionality.file_io import lines_to_string, make_dir, read_yaml, \
+    write_file, write_notebook, write_yaml
+from functionality.hashing import get_file_hash
+from functionality.meow import create_job, create_rules, create_rule, \
+    create_watchdog_event
 from patterns.file_event_pattern import FileEventPattern
 from recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     PapermillHandler, papermill_job_func
@@ -829,6 +830,5 @@ class PythonTests(unittest.TestCase):
             EVENT_RULE: rule
         })
         self.assertTrue(status)
-
 
     # TODO test default parameter function execution

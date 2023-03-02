@@ -5,8 +5,9 @@ and PythonRecipe.
 
 Author(s): David Marchant
 """
+
+from core.base_rule import BaseRule
 from core.correctness.validation import check_type
-from core.meow import BaseRule
 from patterns.file_event_pattern import FileEventPattern
 from recipes.python_recipe import PythonRecipe
 

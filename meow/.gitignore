@@ -51,8 +51,16 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 tests/test_monitor_base
-tests/test_job_queue_dir_dir_dir_dir_dir_dir_dir_dir_dir_dir
+tests/test_job_queue_dir
 tests/test_job_output
+tests/test_files
+tests/test_data
+tests/job_output
+tests/job_queue
+tests/Backup*
+
+# hdf5
+*.h5
 
 # Translations
 *.mo

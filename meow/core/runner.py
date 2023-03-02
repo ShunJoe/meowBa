@@ -14,13 +14,16 @@ from multiprocessing import Pipe
 from random import randrange
 from typing import Any, Union, Dict, List
 
+from core.base_conductor import BaseConductor
+from core.base_handler import BaseHandler
+from core.base_monitor import BaseMonitor
 from core.correctness.vars import DEBUG_WARNING, DEBUG_INFO, EVENT_TYPE, \
-    VALID_CHANNELS, JOB_ID, META_FILE, DEFAULT_JOB_OUTPUT_DIR, \
-    DEFAULT_JOB_QUEUE_DIR
-from core.correctness.validation import setup_debugging, check_type, \
-    valid_list, valid_dir_path
-from core.functionality import  print_debug, wait, read_yaml, make_dir
-from core.meow import BaseHandler, BaseMonitor, BaseConductor
+    VALID_CHANNELS, META_FILE, DEFAULT_JOB_OUTPUT_DIR, DEFAULT_JOB_QUEUE_DIR, \
+    EVENT_PATH
+from core.correctness.validation import check_type, valid_list, valid_dir_path
+from functionality.debug import setup_debugging, print_debug
+from functionality.file_io import make_dir, read_yaml
+from functionality.process_io import wait
 
 
 class MeowRunner:
@@ -47,7 +50,6 @@ class MeowRunner:
         """MeowRunner constructor. This connects all provided monitors, 
         handlers and conductors according to what events and jobs they produce 
         or consume."""
-
 
         self._is_valid_job_queue_dir(job_queue_dir)
         self._is_valid_job_output_dir(job_output_dir)
@@ -198,16 +200,17 @@ class MeowRunner:
         """Function for a given handler to handle a given event, without 
         crashing the runner in the event of a problem."""
         print_debug(self._print_target, self.debug_level, 
-            f"Starting handling for event: '{event[EVENT_TYPE]}'", DEBUG_INFO)
+            f"Starting handling for {event[EVENT_TYPE]} event: "
+            f"'{event[EVENT_PATH]}'", DEBUG_INFO)
         try:
             handler.handle(event)
             print_debug(self._print_target, self.debug_level, 
-                f"Completed handling for event: '{event[EVENT_TYPE]}'",
-                 DEBUG_INFO)
+                f"Completed handling for {event[EVENT_TYPE]} event: "
+                f"'{event[EVENT_PATH]}'", DEBUG_INFO)
         except Exception as e:
             print_debug(self._print_target, self.debug_level, 
-                "Something went wrong during handling for event "
-                f"'{event[EVENT_TYPE]}'. {e}", DEBUG_INFO)
+                f"Something went wrong during handling for {event[EVENT_TYPE]}"
+                f" event '{event[EVENT_PATH]}'. {e}", DEBUG_INFO)
 
     def execute_job(self, conductor:BaseConductor, job_dir:str)->None:
         """Function for a given conductor to execute a given job, without 

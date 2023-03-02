@@ -18,23 +18,27 @@ from typing import Any, Union, Dict, List
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
+from core.base_recipe import BaseRecipe
+from core.base_monitor import BaseMonitor
+from core.base_pattern import BasePattern
+from core.base_rule import BaseRule
 from core.correctness.validation import check_type, valid_string, \
-    valid_dict, valid_list, valid_path, valid_dir_path, setup_debugging
+    valid_dict, valid_list, valid_path, valid_dir_path
 from core.correctness.vars import VALID_RECIPE_NAME_CHARS, \
     VALID_VARIABLE_NAME_CHARS, FILE_EVENTS, FILE_CREATE_EVENT, \
     FILE_MODIFY_EVENT, FILE_MOVED_EVENT, DEBUG_INFO, \
-    FILE_RETROACTIVE_EVENT, SHA256
-from core.functionality import print_debug, create_watchdog_event, \
-    get_file_hash
-from core.meow import BasePattern, BaseMonitor, BaseRule, BaseRecipe, \
-    create_rule
+    FILE_RETROACTIVE_EVENT, SHA256, VALID_PATH_CHARS, FILE_CLOSED_EVENT
+from functionality.debug import setup_debugging, print_debug
+from functionality.hashing import get_file_hash
+from functionality.meow import create_rule, create_watchdog_event
 
 # Events that are monitored by default
 _DEFAULT_MASK = [
     FILE_CREATE_EVENT,
     FILE_MODIFY_EVENT,
     FILE_MOVED_EVENT,
-    FILE_RETROACTIVE_EVENT
+    FILE_RETROACTIVE_EVENT,
+    FILE_CLOSED_EVENT
 ]
 
 class FileEventPattern(BasePattern):
@@ -61,7 +65,7 @@ class FileEventPattern(BasePattern):
     def _is_valid_triggering_path(self, triggering_path:str)->None:
         """Validation check for 'triggering_path' variable from main 
         constructor."""
-        valid_path(triggering_path)
+        valid_string(triggering_path, VALID_PATH_CHARS+'*', min_length=1)
         if len(triggering_path) < 1:
             raise ValueError (
                 f"triggiering path '{triggering_path}' is too short. " 
@@ -167,8 +171,9 @@ class WatchdogMonitor(BaseMonitor):
     def match(self, event)->None:
         """Function to determine if a given event matches the current rules."""
         src_path = event.src_path
-        event_type = "dir_"+ event.event_type if event.is_directory \
-            else "file_" + event.event_type
+
+        prepend = "dir_" if event.is_directory else "file_" 
+        event_types = [prepend+i for i in event.event_type]
 
         # Remove the base dir from the path as trigger paths are given relative
         # to that
@@ -182,7 +187,8 @@ class WatchdogMonitor(BaseMonitor):
             for rule in self._rules.values():
                 
                 # Skip events not within the event mask
-                if event_type not in rule.pattern.event_mask:
+                if any(i in event_types for i in rule.pattern.event_mask) \
+                        != True:
                     continue
                                 
                 # Use regex to match event paths against rule paths
@@ -202,8 +208,8 @@ class WatchdogMonitor(BaseMonitor):
                         get_file_hash(event.src_path, SHA256) 
                     )
                     print_debug(self._print_target, self.debug_level,  
-                        f"Event at {src_path} of type {event_type} hit rule "
-                        f"{rule.name}", DEBUG_INFO)
+                        f"Event at {src_path} hit rule {rule.name}", 
+                        DEBUG_INFO)
                     # Send the event to the runner
                     self.to_runner.send(meow_event)
 
@@ -540,31 +546,62 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         monitor. After each event we wait for '_settletime', to catch 
         subsequent events at the same location, so as to not swamp the system 
         with repeated events."""
+ 
         self._recent_jobs_lock.acquire()
         try:
-            if event.src_path in self._recent_jobs:
-                recent_timestamp = self._recent_jobs[event.src_path]
-                difference = event.time_stamp - recent_timestamp
-
-                # Discard the event if we already have a recent event at this 
-                # same path. Update the most recent time, so we can hopefully
-                # wait till events have stopped happening
-                if difference <= self._settletime:
-                    self._recent_jobs[event.src_path] = \
-                        max(recent_timestamp, event.time_stamp)
+            if event.src_path in self._recent_jobs: 
+                if event.time_stamp > self._recent_jobs[event.src_path][0]:
+                    self._recent_jobs[event.src_path][0] = event.time_stamp
+                    self._recent_jobs[event.src_path][1].add(event.event_type)
+                else:
                     self._recent_jobs_lock.release()
                     return
-                else:
-                    self._recent_jobs[event.src_path] = event.time_stamp
             else:
-                self._recent_jobs[event.src_path] = event.time_stamp
+                self._recent_jobs[event.src_path] = \
+                    [event.time_stamp, {event.event_type}]
         except Exception as ex:
             self._recent_jobs_lock.release()
             raise Exception(ex)
         self._recent_jobs_lock.release()
 
-        # If we did not have a recent event, then send it on to the monitor
+        sleep(self._settletime)
+
+        self._recent_jobs_lock.acquire()
+        try:
+            if event.src_path in self._recent_jobs \
+                    and event.time_stamp < self._recent_jobs[event.src_path][0]:
+                self._recent_jobs_lock.release()
+                return
+        except Exception as ex:
+            self._recent_jobs_lock.release()
+            raise Exception(ex)
+        event.event_type = self._recent_jobs[event.src_path][1]
+        self._recent_jobs_lock.release()
+
         self.monitor.match(event)
+
+#                recent_timestamp = self._recent_jobs[event.src_path]
+#                difference = event.time_stamp - recent_timestamp
+#
+#                # Discard the event if we already have a recent event at this 
+#                # same path. Update the most recent time, so we can hopefully
+#                # wait till events have stopped happening
+#                if difference <= self._settletime:
+#                    self._recent_jobs[event.src_path] = \
+#                        max(recent_timestamp, event.time_stamp)
+#                    self._recent_jobs_lock.release()
+#                    return
+#                else:
+#                    self._recent_jobs[event.src_path] = event.time_stamp
+#            else:
+#                self._recent_jobs[event.src_path] = event.time_stamp
+#        except Exception as ex:
+#            self._recent_jobs_lock.release()
+#            raise Exception(ex)
+#        self._recent_jobs_lock.release()
+#
+#        # If we did not have a recent event, then send it on to the monitor
+#        self.monitor.match(event)
 
     def handle_event(self, event):
         """Handler function, called by all specific event functions. Will 
