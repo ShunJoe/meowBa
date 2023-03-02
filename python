@@ -1,2 +1,0 @@
-execve("./file_createDelete.sh", ["./file_createDelete.sh"], 0x7ffc246e9f30 /* 20 vars */) = -1 EACCES (Permission denied)
-+++ exited with 1 +++
