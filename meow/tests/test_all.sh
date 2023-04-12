@@ -7,15 +7,28 @@ starting_working_dir=$(pwd)
 script_name=$(basename "$0")
 script_dir=$(dirname "$(realpath "$0")")
 
+skip_long_tests=0
+
+for arg in "$@"
+do
+  if [[ $arg == -s ]]
+  then
+    skip_long_tests=1
+  fi
+done
+
 cd $script_dir
 
 # Gather all other test files and run pytest
 search_dir=.
 for entry in "$search_dir"/*
 do
-  if  [[ $entry == ./test* ]] && [[ -f $entry ]] && [[ $entry != ./$script_name ]] && [[ $entry != ./shared.py ]];
+  if  [[ $entry == ./test* ]] \
+    && [[ -f $entry ]] \
+    && [[ $entry != ./$script_name ]] \
+    && [[ $entry != ./shared.py ]];
   then
-    pytest $entry "-W ignore::DeprecationWarning"
+    SKIP_LONG=$skip_long_tests pytest $entry "-W ignore::DeprecationWarning"
   fi
 done
 

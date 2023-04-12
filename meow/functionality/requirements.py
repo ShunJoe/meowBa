@@ -11,7 +11,7 @@ from os.path import basename
 from sys import version_info, prefix, base_prefix
 from typing import Any, Dict, List, Tuple, Union
 
-from core.correctness.validation import check_type
+from meow_base.functionality.validation import check_type
 
 REQUIREMENT_PYTHON = "python"
 REQ_PYTHON_MODULES = "modules"

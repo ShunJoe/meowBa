@@ -7,7 +7,7 @@ Author(s): David Marchant
 from typing import List
 from random import SystemRandom
 
-from core.correctness.vars import CHAR_LOWERCASE, CHAR_UPPERCASE
+from meow_base.core.vars import CHAR_LOWERCASE, CHAR_UPPERCASE
 
 
 #TODO Make this guaranteed unique
@@ -27,3 +27,12 @@ def generate_rule_id():
 
 def generate_job_id():
     return _generate_id(prefix="job_")
+
+def generate_conductor_id():
+    return _generate_id(prefix="conductor_")
+
+def generate_handler_id():
+    return _generate_id(prefix="handler_")
+
+def generate_monitor_id():
+    return _generate_id(prefix="monitor_")

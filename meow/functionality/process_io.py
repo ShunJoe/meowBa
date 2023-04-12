@@ -12,7 +12,7 @@ from multiprocessing.connection import Connection, wait as multi_wait
 if osName == 'nt':
     from multiprocessing.connection import PipeConnection
 from multiprocessing.queues import Queue
-from core.correctness.vars import VALID_CHANNELS
+from meow_base.core.vars import VALID_CHANNELS
 
 
 def wait(inputs:List[VALID_CHANNELS])->List[VALID_CHANNELS]:

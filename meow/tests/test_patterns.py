@@ -4,16 +4,18 @@ import os
 import unittest
 
 from multiprocessing import Pipe
+from time import sleep
 
-from core.correctness.vars import FILE_CREATE_EVENT, EVENT_TYPE, \
+from meow_base.core.vars import FILE_CREATE_EVENT, EVENT_TYPE, \
     EVENT_RULE, WATCHDOG_BASE, EVENT_TYPE_WATCHDOG, EVENT_PATH, SWEEP_START, \
-    SWEEP_JUMP, SWEEP_STOP
-from functionality.file_io import make_dir
-from patterns.file_event_pattern import FileEventPattern, WatchdogMonitor, \
-    _DEFAULT_MASK
-from recipes import JupyterNotebookRecipe
-from shared import setup, teardown, BAREBONES_NOTEBOOK, TEST_MONITOR_BASE
-
+    SWEEP_JUMP, SWEEP_STOP, DIR_EVENTS
+from meow_base.functionality.file_io import make_dir
+from meow_base.patterns.file_event_pattern import FileEventPattern, \
+    WatchdogMonitor, _DEFAULT_MASK
+from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
+from meow_base.recipes.python_recipe import PythonRecipe
+from shared import BAREBONES_NOTEBOOK, TEST_MONITOR_BASE, \
+    COUNTING_PYTHON_SCRIPT, setup, teardown
 
 
 def patterns_equal(tester, pattern_one, pattern_two):
@@ -37,7 +39,7 @@ def recipes_equal(tester, recipe_one, recipe_two):
     tester.assertEqual(recipe_one.source, recipe_two.source)
 
 
-class CorrectnessTests(unittest.TestCase):
+class FileEventPatternTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
         setup()
@@ -185,10 +187,28 @@ class CorrectnessTests(unittest.TestCase):
             fep = FileEventPattern("name", "path", "recipe", "file", 
                 sweep=bad_sweep)
 
+class WatchdogMonitorTests(unittest.TestCase):
+    def setUp(self)->None:
+        super().setUp()
+        setup()
+
+    def tearDown(self)->None:
+        super().tearDown()
+        teardown()
+
     # Test WatchdogMonitor created 
     def testWatchdogMonitorMinimum(self)->None:
         from_monitor = Pipe()
         WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, from_monitor[1])
+
+    # Test WatchdogMonitor naming
+    def testWatchdogMonitorNaming(self)->None:
+        test_name = "test_name"
+        monitor = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name=test_name)
+        self.assertEqual(monitor.name, test_name)
+
+        monitor = WatchdogMonitor(TEST_MONITOR_BASE, {}, {})
+        self.assertTrue(monitor.name.startswith("monitor_"))
 
     # Test WatchdogMonitor identifies expected events in base directory
     def testWatchdogMonitorEventIdentificaion(self)->None:
@@ -305,6 +325,77 @@ class CorrectnessTests(unittest.TestCase):
 
         wm.stop()
 
+    # Test WatchdogMonitor identifies directory content updates
+    def testMonitorDirectoryMonitoring(self)->None:
+        pattern_one = FileEventPattern(
+            "pattern_one", 
+            os.path.join("top"), 
+            "recipe_one", 
+            "dir_to_count", 
+            parameters={},
+            event_mask=DIR_EVENTS
+        )
+        recipe = PythonRecipe(
+            "recipe_one", COUNTING_PYTHON_SCRIPT)
+
+        patterns = {
+            pattern_one.name: pattern_one,
+        }
+        recipes = {
+            recipe.name: recipe,
+        }
+
+        wm = WatchdogMonitor(
+            TEST_MONITOR_BASE,
+            patterns,
+            recipes,
+            settletime=3
+        )
+
+        rules = wm.get_rules()
+        rule = rules[list(rules.keys())[0]]
+
+        from_monitor_reader, from_monitor_writer = Pipe()
+        wm.to_runner = from_monitor_writer
+   
+        wm.start()
+
+        start_dir = os.path.join(TEST_MONITOR_BASE, "top")
+
+        contents = 10
+        make_dir(start_dir)
+        for i in range(contents):
+            with open(os.path.join(start_dir, f"{i}.txt"), "w") as f:
+                f.write("-")
+            sleep(1)
+
+        self.assertTrue(start_dir)
+        for i in range(contents):
+            self.assertTrue(os.path.exists(
+                os.path.join(start_dir, f"{i}.txt"))
+            )
+
+        messages = []
+        while True:
+            if from_monitor_reader.poll(5):
+                messages.append(from_monitor_reader.recv())
+            else:
+                break
+        self.assertTrue(len(messages), 1)
+        message = messages[0]
+
+        self.assertEqual(type(message), dict)
+        self.assertIn(EVENT_TYPE, message)
+        self.assertEqual(message[EVENT_TYPE], EVENT_TYPE_WATCHDOG)
+        self.assertIn(WATCHDOG_BASE, message)
+        self.assertEqual(message[WATCHDOG_BASE], TEST_MONITOR_BASE)
+        self.assertIn(EVENT_PATH, message)
+        self.assertEqual(message[EVENT_PATH], start_dir)
+        self.assertIn(EVENT_RULE, message)
+        self.assertEqual(message[EVENT_RULE].name, rule.name)
+
+        wm.stop()
+
     # Test WatchdogMonitor identifies fake events for retroactive patterns
     def testMonitoringRetroActive(self)->None:
         pattern_one = FileEventPattern(
@@ -367,6 +458,76 @@ class CorrectnessTests(unittest.TestCase):
         self.assertIn(EVENT_PATH, message)
         self.assertEqual(message[EVENT_PATH], 
             os.path.join(start_dir, "A.txt"))
+        self.assertIn(EVENT_RULE, message)
+        self.assertEqual(message[EVENT_RULE].name, rule.name)
+
+        wm.stop()
+
+    # Test WatchdogMonitor identifies events for retroacive directory patterns
+    def testMonitorRetroActiveDirectory(self)->None:
+        contents = 10
+        start_dir = os.path.join(TEST_MONITOR_BASE, "top")
+        make_dir(start_dir)
+        for i in range(contents):
+            with open(os.path.join(start_dir, f"{i}.txt"), "w") as f:
+                f.write("-")
+            sleep(1)
+
+        self.assertTrue(start_dir)
+        for i in range(contents):
+            self.assertTrue(os.path.exists(
+                os.path.join(start_dir, f"{i}.txt"))
+            )
+
+        pattern_one = FileEventPattern(
+            "pattern_one", 
+            os.path.join("top"), 
+            "recipe_one", 
+            "dir_to_count", 
+            parameters={},
+            event_mask=DIR_EVENTS
+        )
+        recipe = PythonRecipe(
+            "recipe_one", COUNTING_PYTHON_SCRIPT)
+
+        patterns = {
+            pattern_one.name: pattern_one,
+        }
+        recipes = {
+            recipe.name: recipe,
+        }
+
+        wm = WatchdogMonitor(
+            TEST_MONITOR_BASE,
+            patterns,
+            recipes,
+            settletime=3
+        )
+
+        rules = wm.get_rules()
+        rule = rules[list(rules.keys())[0]]
+
+        from_monitor_reader, from_monitor_writer = Pipe()
+        wm.to_runner = from_monitor_writer
+   
+        wm.start()
+
+        messages = []
+        while True:
+            if from_monitor_reader.poll(5):
+                messages.append(from_monitor_reader.recv())
+            else:
+                break
+        self.assertTrue(len(messages), 1)
+        message = messages[0]
+
+        self.assertEqual(type(message), dict)
+        self.assertIn(EVENT_TYPE, message)
+        self.assertEqual(message[EVENT_TYPE], EVENT_TYPE_WATCHDOG)
+        self.assertIn(WATCHDOG_BASE, message)
+        self.assertEqual(message[WATCHDOG_BASE], TEST_MONITOR_BASE)
+        self.assertIn(EVENT_PATH, message)
+        self.assertEqual(message[EVENT_PATH], start_dir)
         self.assertIn(EVENT_RULE, message)
         self.assertEqual(message[EVENT_RULE].name, rule.name)
 
@@ -773,4 +934,3 @@ class CorrectnessTests(unittest.TestCase):
 
         self.assertIsInstance(rules, dict)
         self.assertEqual(len(rules), 2)
-        

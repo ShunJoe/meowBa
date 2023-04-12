@@ -3,32 +3,33 @@ import io
 import importlib
 import os
 import unittest
- 
+
 from random import shuffle
 from shutil import copy
 from time import sleep
+from warnings import warn
 
-from core.base_conductor import BaseConductor
-from core.base_handler import BaseHandler
-from core.base_monitor import BaseMonitor
-from conductors import LocalPythonConductor
-from core.correctness.vars import get_result_file, \
-    JOB_TYPE_PAPERMILL, JOB_ERROR, META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME
-from core.runner import MeowRunner
-from functionality.file_io import make_dir, read_file, read_notebook, \
-    read_yaml, write_file, lines_to_string
-from functionality.meow import create_parameter_sweep
-from functionality.requirements import create_python_requirements
-from patterns.file_event_pattern import WatchdogMonitor, FileEventPattern
-from recipes.jupyter_notebook_recipe import PapermillHandler, \
+from meow_base.core.base_conductor import BaseConductor
+from meow_base.core.base_handler import BaseHandler
+from meow_base.core.base_monitor import BaseMonitor
+from meow_base.conductors import LocalPythonConductor
+from meow_base.core.vars import JOB_TYPE_PAPERMILL, JOB_ERROR, \
+    META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME, get_result_file
+from meow_base.core.runner import MeowRunner
+from meow_base.functionality.file_io import make_dir, read_file, \
+    read_notebook, read_yaml, write_file, lines_to_string
+from meow_base.functionality.meow import create_parameter_sweep
+from meow_base.functionality.requirements import create_python_requirements
+from meow_base.patterns.file_event_pattern import WatchdogMonitor, \
+    FileEventPattern
+from meow_base.recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
-from recipes.python_recipe import PythonHandler, PythonRecipe
-from shared import setup, teardown, backup_before_teardown, \
-    TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, MAKER_RECIPE, \
-    APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, FILTER_RECIPE, \
-    POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, GENERATOR_NOTEBOOK, \
-    FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_MODULE, TEST_DATA, GENERATE_SCRIPT
-
+from meow_base.recipes.python_recipe import PythonHandler, PythonRecipe
+from shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
+    MAKER_RECIPE, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, \
+    FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, \
+    GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_PYTHON_SCRIPT, \
+    TEST_DATA, GENERATE_PYTHON_SCRIPT, setup, teardown, backup_before_teardown
 
 pattern_check = FileEventPattern(
     "pattern_check", 
@@ -116,6 +117,7 @@ recipe_generator = JupyterNotebookRecipe(
     requirements={recipe_generator_key: recipe_generator_req}           
 )
 
+ 
 class MeowTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
@@ -771,6 +773,151 @@ class MeowTests(unittest.TestCase):
             output_path = os.path.join(TEST_MONITOR_BASE, "output", "A.txt")
             self.assertTrue(os.path.exists(output_path))
 
+    # Test monitor meow editting
+    def testMeowRunnerMEOWEditting(self)->None:
+        pattern_one = FileEventPattern(
+            "pattern_one", os.path.join("start", "A.txt"), "recipe_one", "infile", 
+            parameters={
+                "num":10000,
+                "outfile":os.path.join("{BASE}", "output", "{FILENAME}")
+            })
+        pattern_two = FileEventPattern(
+            "pattern_two", os.path.join("start", "A.txt"), "recipe_two", "infile", 
+            parameters={
+                "num":10000,
+                "outfile":os.path.join("{BASE}", "output", "{FILENAME}")
+            })
+        recipe_one = PythonRecipe(
+            "recipe_one", COMPLETE_PYTHON_SCRIPT
+        )
+        recipe_two = PythonRecipe(
+            "recipe_two", COMPLETE_PYTHON_SCRIPT
+        )
+
+        patterns = {
+            pattern_one.name: pattern_one,
+        }
+        recipes = {
+            recipe_one.name: recipe_one,
+        }
+
+        runner_debug_stream = io.StringIO("")
+
+        runner = MeowRunner(
+            WatchdogMonitor(
+                TEST_MONITOR_BASE,
+                patterns,
+                recipes,
+                settletime=1
+            ), 
+            PythonHandler(
+                job_queue_dir=TEST_JOB_QUEUE
+            ),
+            LocalPythonConductor(),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT,
+            print=runner_debug_stream,
+            logging=3                
+        )        
+   
+        runner.start()
+
+        start_dir = os.path.join(TEST_MONITOR_BASE, "start")
+        make_dir(start_dir)
+        self.assertTrue(start_dir)
+        with open(os.path.join(start_dir, "A.txt"), "w") as f:
+            f.write("25000")
+
+        self.assertTrue(os.path.exists(os.path.join(start_dir, "A.txt")))
+
+        loops = 0
+        job_ids = set()
+        while loops < 5:
+            sleep(1)
+            runner_debug_stream.seek(0)
+            messages = runner_debug_stream.readlines()
+
+            for msg in messages:
+                self.assertNotIn("ERROR", msg)
+            
+                if "INFO: Completed execution for job: '" in msg:
+                    job_id = msg.replace(
+                        "INFO: Completed execution for job: '", "")
+                    job_ids.add(job_id[:-2])
+                    loops = 5
+            loops += 1
+
+        self.assertEqual(len(job_ids), 1)
+        self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 1)
+        for job_id in job_ids:
+            self.assertIn(job_id, os.listdir(TEST_JOB_OUTPUT))
+
+        runner.monitors[0].add_pattern(pattern_two)
+
+        loops = 0
+        while loops < 5:
+            sleep(1)
+            runner_debug_stream.seek(0)
+            messages = runner_debug_stream.readlines()
+
+            for msg in messages:
+                self.assertNotIn("ERROR", msg)
+            
+                if "INFO: Completed execution for job: '" in msg:
+                    job_id = msg.replace(
+                        "INFO: Completed execution for job: '", "")
+                    job_ids.add(job_id[:-2])
+                    loops = 5
+            loops += 1
+
+        self.assertEqual(len(job_ids), 1)
+        self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 1)
+        for job_id in job_ids:
+            self.assertIn(job_id, os.listdir(TEST_JOB_OUTPUT))
+
+        runner.monitors[0].add_recipe(recipe_two)
+
+        loops = 0
+        while loops < 5:
+            sleep(1)
+            runner_debug_stream.seek(0)
+            messages = runner_debug_stream.readlines()
+
+            for msg in messages:
+                self.assertNotIn("ERROR", msg)
+            
+                if "INFO: Completed execution for job: '" in msg:
+                    job_id = msg.replace(
+                        "INFO: Completed execution for job: '", "")
+                    job_ids.add(job_id[:-2])
+                    loops = 5
+            loops += 1
+
+        self.assertEqual(len(job_ids), 2)
+        self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 2)
+        for job_id in job_ids:
+            self.assertIn(job_id, os.listdir(TEST_JOB_OUTPUT))
+
+        runner.stop()
+
+        job_dir = os.path.join(TEST_JOB_OUTPUT, job_id)
+
+        metafile = os.path.join(job_dir, META_FILE)
+        status = read_yaml(metafile)
+
+        self.assertNotIn(JOB_ERROR, status)
+
+        result_path = os.path.join(job_dir, get_result_file(JOB_TYPE_PYTHON))
+        self.assertTrue(os.path.exists(result_path))
+        result = read_file(os.path.join(result_path))
+        self.assertEqual(
+            result, "--STDOUT--\n12505000.0\ndone\n\n\n--STDERR--\n\n")
+
+        output_path = os.path.join(TEST_MONITOR_BASE, "output", "A.txt")
+        self.assertTrue(os.path.exists(output_path))
+        output = read_file(os.path.join(output_path))
+        self.assertEqual(output, "12505000.0")
+
     def testSelfModifyingAnalysis(self)->None:
         maker_pattern = FileEventPattern(
             "maker_pattern", 
@@ -825,6 +972,10 @@ class MeowTests(unittest.TestCase):
 
     # Test some actual scientific analysis, but in a simple progression
     def testScientificAnalysisAllGood(self)->None:
+        if os.environ["SKIP_LONG"] and os.environ["SKIP_LONG"] == '1':
+            warn("Skipping testScientificAnalysisAllGood")
+            return
+        
         patterns = {
             'pattern_check': pattern_check,
             'pattern_segment': pattern_segment,
@@ -869,11 +1020,11 @@ class MeowTests(unittest.TestCase):
         foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
         make_dir(foam_data_dir)
 
-        write_file(lines_to_string(IDMC_UTILS_MODULE), 
+        write_file(lines_to_string(IDMC_UTILS_PYTHON_SCRIPT), 
             os.path.join(TEST_MONITOR_BASE, "idmc_utils_module.py"))
 
         gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
-        write_file(lines_to_string(GENERATE_SCRIPT), gen_path)
+        write_file(lines_to_string(GENERATE_PYTHON_SCRIPT), gen_path)
 
         u_spec = importlib.util.spec_from_file_location("gen", gen_path)
         gen = importlib.util.module_from_spec(u_spec)
@@ -945,6 +1096,10 @@ class MeowTests(unittest.TestCase):
 
     # Test some actual scientific analysis, in a predicatable loop
     def testScientificAnalysisPredictableLoop(self)->None:
+        if os.environ["SKIP_LONG"] and os.environ["SKIP_LONG"] == '1':
+            warn("Skipping testScientificAnalysisPredictableLoop")
+            return
+        
         patterns = {
             'pattern_check': pattern_check,
             'pattern_segment': pattern_segment,
@@ -990,11 +1145,11 @@ class MeowTests(unittest.TestCase):
         foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
         make_dir(foam_data_dir)
         
-        write_file(lines_to_string(IDMC_UTILS_MODULE), 
+        write_file(lines_to_string(IDMC_UTILS_PYTHON_SCRIPT), 
             os.path.join(TEST_MONITOR_BASE, "idmc_utils_module.py"))
 
         gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
-        write_file(lines_to_string(GENERATE_SCRIPT), gen_path)
+        write_file(lines_to_string(GENERATE_PYTHON_SCRIPT), gen_path)
 
         all_data = [1000] * good + [100] * big + [10000] * small
         shuffle(all_data)
@@ -1080,6 +1235,10 @@ class MeowTests(unittest.TestCase):
 
     # Test some actual scientific analysis, in an unpredicatable loop
     def testScientificAnalysisRandomLoop(self)->None:
+        if os.environ["SKIP_LONG"] and os.environ["SKIP_LONG"] == '1':
+            warn("Skipping testScientificAnalysisRandomLoop")
+            return
+
         pattern_regenerate_random = FileEventPattern(
             "pattern_regenerate_random",
             os.path.join("foam_ct_data_discarded", "*"),
@@ -1144,11 +1303,11 @@ class MeowTests(unittest.TestCase):
         foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
         make_dir(foam_data_dir)
         
-        write_file(lines_to_string(IDMC_UTILS_MODULE), 
+        write_file(lines_to_string(IDMC_UTILS_PYTHON_SCRIPT), 
             os.path.join(TEST_MONITOR_BASE, "idmc_utils_module.py"))
 
         gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
-        write_file(lines_to_string(GENERATE_SCRIPT), gen_path)
+        write_file(lines_to_string(GENERATE_PYTHON_SCRIPT), gen_path)
 
         all_data = [1000] * good + [100] * big + [10000] * small
         shuffle(all_data)
@@ -1228,6 +1387,10 @@ class MeowTests(unittest.TestCase):
 
     # Test some actual scientific analysis, in an unpredicatable loop
     def testScientificAnalysisMassiveRandomLoop(self)->None:
+        if os.environ["SKIP_LONG"] and os.environ["SKIP_LONG"] == '1':
+            warn("Skipping testScientificAnalysisMassiveRandomLoop")
+            return
+
         pattern_regenerate_random = FileEventPattern(
             "pattern_regenerate_random",
             os.path.join("foam_ct_data_discarded", "*"),
@@ -1292,11 +1455,11 @@ class MeowTests(unittest.TestCase):
         foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
         make_dir(foam_data_dir)
         
-        write_file(lines_to_string(IDMC_UTILS_MODULE), 
+        write_file(lines_to_string(IDMC_UTILS_PYTHON_SCRIPT), 
             os.path.join(TEST_MONITOR_BASE, "idmc_utils_module.py"))
 
         gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
-        write_file(lines_to_string(GENERATE_SCRIPT), gen_path)
+        write_file(lines_to_string(GENERATE_PYTHON_SCRIPT), gen_path)
 
         all_data = [1000] * good + [100] * big + [10000] * small
         shuffle(all_data)
@@ -1373,13 +1536,84 @@ class MeowTests(unittest.TestCase):
 
         self.assertEqual(results, good+big+small)
 
+    def testMonitorIdentification(self)->None:
+        monitor_one = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m1")
+        monitor_two = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m2")
+        monitors = [ monitor_one, monitor_two ]
+
+        handler_one = PapermillHandler(name="h1")
+        handler_two = PapermillHandler(name="h2")
+        handlers = [ handler_one, handler_two ]
+
+        conductor_one = LocalPythonConductor(name="c1")
+        conductor_two = LocalPythonConductor(name="c2")
+        conductors = [ conductor_one, conductor_two ]
+
+        runner = MeowRunner(monitors, handlers, conductors)
+
+        m1 = runner.get_monitor_by_name("m1")
+        self.assertEqual(monitor_one, m1)
+        m2 = runner.get_monitor_by_name("m2")
+        self.assertEqual(monitor_two, m2)
+        m3 = runner.get_monitor_by_name("m3")
+        self.assertIsNone(m3)
+
+        mt = runner.get_monitor_by_type(WatchdogMonitor)
+        self.assertIn(mt, monitors)
+
+    def testHandlerIdentification(self)->None:
+        monitor_one = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m1")
+        monitor_two = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m2")
+        monitors = [ monitor_one, monitor_two ]
+
+        handler_one = PapermillHandler(name="h1")
+        handler_two = PapermillHandler(name="h2")
+        handlers = [ handler_one, handler_two ]
+
+        conductor_one = LocalPythonConductor(name="c1")
+        conductor_two = LocalPythonConductor(name="c2")
+        conductors = [ conductor_one, conductor_two ]
+
+        runner = MeowRunner(monitors, handlers, conductors)
+
+        h1 = runner.get_handler_by_name("h1")
+        self.assertEqual(handler_one, h1)
+        h2 = runner.get_handler_by_name("h2")
+        self.assertEqual(handler_two, h2)
+        h3 = runner.get_handler_by_name("h3")
+        self.assertIsNone(h3)
+
+        mt = runner.get_handler_by_type(PapermillHandler)
+        self.assertIn(mt, handlers)
+        mn = runner.get_handler_by_type(PythonHandler)
+        self.assertIsNone(mn)
+
+    def testConductorIdentification(self)->None:
+        monitor_one = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m1")
+        monitor_two = WatchdogMonitor(TEST_MONITOR_BASE, {}, {}, name="m2")
+        monitors = [ monitor_one, monitor_two ]
+
+        handler_one = PapermillHandler(name="h1")
+        handler_two = PapermillHandler(name="h2")
+        handlers = [ handler_one, handler_two ]
+
+        conductor_one = LocalPythonConductor(name="c1")
+        conductor_two = LocalPythonConductor(name="c2")
+        conductors = [ conductor_one, conductor_two ]
+
+        runner = MeowRunner(monitors, handlers, conductors)
+
+        c1 = runner.get_conductor_by_name("c1")
+        self.assertEqual(conductor_one, c1)
+        c2 = runner.get_conductor_by_name("c2")
+        self.assertEqual(conductor_two, c2)
+        c3 = runner.get_conductor_by_name("c3")
+        self.assertIsNone(c3)
+
+        ct = runner.get_conductor_by_type(LocalPythonConductor)
+        self.assertIn(ct, conductors)
+
     # TODO test getting job cannot handle
     # TODO test getting event cannot handle
-    # TODO test with several matched monitors
-    # TODO test with several mismatched monitors
-    # TODO test with several matched handlers
-    # TODO test with several mismatched handlers
-    # TODO test with several matched conductors
-    # TODO test with several mismatched conductors
     # TODO tests runner job queue dir
     # TODO tests runner job output dir

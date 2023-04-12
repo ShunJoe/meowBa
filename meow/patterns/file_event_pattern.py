@@ -18,19 +18,20 @@ from typing import Any, Union, Dict, List
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-from core.base_recipe import BaseRecipe
-from core.base_monitor import BaseMonitor
-from core.base_pattern import BasePattern
-from core.base_rule import BaseRule
-from core.correctness.validation import check_type, valid_string, \
-    valid_dict, valid_list, valid_path, valid_dir_path
-from core.correctness.vars import VALID_RECIPE_NAME_CHARS, \
+from meow_base.core.base_recipe import BaseRecipe
+from meow_base.core.base_monitor import BaseMonitor
+from meow_base.core.base_pattern import BasePattern
+from meow_base.core.rule import Rule
+from meow_base.functionality.validation import check_type, valid_string, \
+    valid_dict, valid_list, valid_dir_path
+from meow_base.core.vars import VALID_RECIPE_NAME_CHARS, \
     VALID_VARIABLE_NAME_CHARS, FILE_EVENTS, FILE_CREATE_EVENT, \
-    FILE_MODIFY_EVENT, FILE_MOVED_EVENT, DEBUG_INFO, \
-    FILE_RETROACTIVE_EVENT, SHA256, VALID_PATH_CHARS, FILE_CLOSED_EVENT
-from functionality.debug import setup_debugging, print_debug
-from functionality.hashing import get_file_hash
-from functionality.meow import create_rule, create_watchdog_event
+    FILE_MODIFY_EVENT, FILE_MOVED_EVENT, DEBUG_INFO, DIR_EVENTS, \
+    FILE_RETROACTIVE_EVENT, SHA256, VALID_PATH_CHARS, FILE_CLOSED_EVENT, \
+    DIR_RETROACTIVE_EVENT
+from meow_base.functionality.debug import setup_debugging, print_debug
+from meow_base.functionality.hashing import get_hash
+from meow_base.functionality.meow import create_rule, create_watchdog_event
 
 # Events that are monitored by default
 _DEFAULT_MASK = [
@@ -65,7 +66,12 @@ class FileEventPattern(BasePattern):
     def _is_valid_triggering_path(self, triggering_path:str)->None:
         """Validation check for 'triggering_path' variable from main 
         constructor."""
-        valid_string(triggering_path, VALID_PATH_CHARS+'*', min_length=1)
+        valid_string(
+            triggering_path, 
+            VALID_PATH_CHARS+'*', 
+            min_length=1, 
+            hint="FileEventPattern.triggering_path"
+        )
         if len(triggering_path) < 1:
             raise ValueError (
                 f"triggiering path '{triggering_path}' is too short. " 
@@ -75,34 +81,69 @@ class FileEventPattern(BasePattern):
     def _is_valid_triggering_file(self, triggering_file:str)->None:
         """Validation check for 'triggering_file' variable from main 
         constructor."""
-        valid_string(triggering_file, VALID_VARIABLE_NAME_CHARS)
+        valid_string(
+            triggering_file, 
+            VALID_VARIABLE_NAME_CHARS,
+            hint="FileEventPattern.triggering_file"
+        )
 
     def _is_valid_recipe(self, recipe:str)->None:
         """Validation check for 'recipe' variable from main constructor. 
         Called within parent BasePattern constructor."""
-        valid_string(recipe, VALID_RECIPE_NAME_CHARS)
+        valid_string(
+            recipe, 
+            VALID_RECIPE_NAME_CHARS,
+            hint="FileEventPattern.recipe"
+        )
 
     def _is_valid_parameters(self, parameters:Dict[str,Any])->None:
         """Validation check for 'parameters' variable from main constructor. 
         Called within parent BasePattern constructor."""
-        valid_dict(parameters, str, Any, strict=False, min_length=0)
+        valid_dict(
+            parameters, 
+            str, 
+            Any, 
+            strict=False, 
+            min_length=0, 
+            hint="FileEventPattern.parameters"
+        )
         for k in parameters.keys():
-            valid_string(k, VALID_VARIABLE_NAME_CHARS)
+            valid_string(
+                k, 
+                VALID_VARIABLE_NAME_CHARS,
+                hint=f"FileEventPattern.parameters[{k}]"
+            )
 
     def _is_valid_output(self, outputs:Dict[str,str])->None:
         """Validation check for 'output' variable from main constructor. 
         Called within parent BasePattern constructor."""
-        valid_dict(outputs, str, str, strict=False, min_length=0)
+        valid_dict(
+            outputs, 
+            str, 
+            str, 
+            strict=False, 
+            min_length=0,
+            hint="FileEventPattern.outputs"
+        )
         for k in outputs.keys():
-            valid_string(k, VALID_VARIABLE_NAME_CHARS)
+            valid_string(
+                k, 
+                VALID_VARIABLE_NAME_CHARS,
+                hint=f"FileEventPattern.outputs[{k}]"
+            )
 
     def _is_valid_event_mask(self, event_mask)->None:
         """Validation check for 'event_mask' variable from main constructor."""
-        valid_list(event_mask, str, min_length=1)
+        valid_list(
+            event_mask, 
+            str, 
+            min_length=1, 
+            hint="FileEventPattern.event_mask"
+        )
         for mask in event_mask:
-            if mask not in FILE_EVENTS:
+            if mask not in FILE_EVENTS + DIR_EVENTS:
                 raise ValueError(f"Invalid event mask '{mask}'. Valid are: "
-                    f"{FILE_EVENTS}")
+                    f"{FILE_EVENTS + DIR_EVENTS}")
 
     def _is_valid_sweep(self, sweep: Dict[str,Union[int,float,complex]]) -> None:
         """Validation check for 'sweep' variable from main constructor."""
@@ -129,12 +170,12 @@ class WatchdogMonitor(BaseMonitor):
 
     def __init__(self, base_dir:str, patterns:Dict[str,FileEventPattern], 
             recipes:Dict[str,BaseRecipe], autostart=False, settletime:int=1, 
-            print:Any=sys.stdout, logging:int=0)->None:
+            name:str="", print:Any=sys.stdout, logging:int=0)->None:
         """WatchdogEventHandler Constructor. This uses the watchdog module to 
         monitor a directory and all its sub-directories. Watchdog will provide 
         the monitor with an caught events, with the monitor comparing them 
         against its rules, and informing the runner of match."""
-        super().__init__(patterns, recipes)
+        super().__init__(patterns, recipes, name=name)
         self._is_valid_base_dir(base_dir)
         self.base_dir = base_dir
         check_type(settletime, int, hint="WatchdogMonitor.settletime")
@@ -194,8 +235,12 @@ class WatchdogMonitor(BaseMonitor):
                 # Use regex to match event paths against rule paths
                 target_path = rule.pattern.triggering_path
                 recursive_regexp = translate(target_path)
-                direct_regexp = recursive_regexp.replace(
-                    '.*', '[^'+ os.path.sep +']*')
+                if os.name == 'nt':
+                    direct_regexp = recursive_regexp.replace(
+                        '.*', '[^'+ os.path.sep + os.path.sep +']*')
+                else:
+                    direct_regexp = recursive_regexp.replace(
+                        '.*', '[^'+ os.path.sep +']*')
                 recursive_hit = match(recursive_regexp, handle_path)
                 direct_hit = match(direct_regexp, handle_path)
 
@@ -205,7 +250,7 @@ class WatchdogMonitor(BaseMonitor):
                         event.src_path,
                         rule,
                         self.base_dir,
-                        get_file_hash(event.src_path, SHA256) 
+                        get_hash(event.src_path, SHA256) 
                     )
                     print_debug(self._print_target, self.debug_level,  
                         f"Event at {src_path} hit rule {rule.name}", 
@@ -354,7 +399,7 @@ class WatchdogMonitor(BaseMonitor):
         self._recipes_lock.release()
         return to_return
     
-    def get_rules(self)->Dict[str,BaseRule]:
+    def get_rules(self)->Dict[str,Rule]:
         """Function to get a dict of the currently defined rules of the 
         monitor. Note that the result is deep-copied, and so can be manipulated
         without directly manipulating the internals of the monitor."""
@@ -482,7 +527,7 @@ class WatchdogMonitor(BaseMonitor):
         for rule in self._rules.values():
             self._apply_retroactive_rule(rule)
 
-    def _apply_retroactive_rule(self, rule:BaseRule)->None:
+    def _apply_retroactive_rule(self, rule:Rule)->None:
         """Function to determine if a rule should be applied to the existing 
         file structure, were the file structure created/modified now."""
         self._rules_lock.acquire()
@@ -492,7 +537,8 @@ class WatchdogMonitor(BaseMonitor):
                 self._rules_lock.release()
                 return
 
-            if FILE_RETROACTIVE_EVENT in rule.pattern.event_mask:
+            if FILE_RETROACTIVE_EVENT in rule.pattern.event_mask \
+                    or DIR_RETROACTIVE_EVENT in rule.pattern.event_mask:
                 # Determine what paths are potentially triggerable and gather
                 # files at those paths
                 testing_path = os.path.join(
@@ -507,7 +553,7 @@ class WatchdogMonitor(BaseMonitor):
                         globble,
                         rule,
                         self.base_dir,
-                        get_file_hash(globble, SHA256)
+                        get_hash(globble, SHA256)
                     )
                     print_debug(self._print_target, self.debug_level,  
                         f"Retroactive event for file at at {globble} hit rule "
@@ -559,6 +605,14 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             else:
                 self._recent_jobs[event.src_path] = \
                     [event.time_stamp, {event.event_type}]
+
+            # If we have a closed event then short-cut the wait and send event
+            # immediately        
+            if event.event_type == FILE_CLOSED_EVENT:
+                self.monitor.match(event)
+                self._recent_jobs_lock.release()
+                return
+
         except Exception as ex:
             self._recent_jobs_lock.release()
             raise Exception(ex)
@@ -579,29 +633,6 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         self._recent_jobs_lock.release()
 
         self.monitor.match(event)
-
-#                recent_timestamp = self._recent_jobs[event.src_path]
-#                difference = event.time_stamp - recent_timestamp
-#
-#                # Discard the event if we already have a recent event at this 
-#                # same path. Update the most recent time, so we can hopefully
-#                # wait till events have stopped happening
-#                if difference <= self._settletime:
-#                    self._recent_jobs[event.src_path] = \
-#                        max(recent_timestamp, event.time_stamp)
-#                    self._recent_jobs_lock.release()
-#                    return
-#                else:
-#                    self._recent_jobs[event.src_path] = event.time_stamp
-#            else:
-#                self._recent_jobs[event.src_path] = event.time_stamp
-#        except Exception as ex:
-#            self._recent_jobs_lock.release()
-#            raise Exception(ex)
-#        self._recent_jobs_lock.release()
-#
-#        # If we did not have a recent event, then send it on to the monitor
-#        self.monitor.match(event)
 
     def handle_event(self, event):
         """Handler function, called by all specific event functions. Will 

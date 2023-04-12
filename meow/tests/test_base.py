@@ -3,15 +3,14 @@ import unittest
  
 from typing import Any, Union, Tuple, Dict
 
-from core.base_conductor import BaseConductor
-from core.base_handler import BaseHandler
-from core.base_monitor import BaseMonitor
-from core.base_pattern import BasePattern
-from core.base_recipe import BaseRecipe
-from core.base_rule import BaseRule
-from core.correctness.vars import SWEEP_STOP, SWEEP_JUMP, SWEEP_START
-from patterns import FileEventPattern
-from shared import setup, teardown, valid_pattern_one, valid_recipe_one
+from meow_base.core.base_conductor import BaseConductor
+from meow_base.core.base_handler import BaseHandler
+from meow_base.core.base_monitor import BaseMonitor
+from meow_base.core.base_pattern import BasePattern
+from meow_base.core.base_recipe import BaseRecipe
+from meow_base.core.vars import SWEEP_STOP, SWEEP_JUMP, SWEEP_START
+from meow_base.patterns.file_event_pattern import FileEventPattern
+from shared import setup, teardown
 
 
 class BaseRecipeTests(unittest.TestCase):
@@ -145,35 +144,6 @@ class BasePatternTests(unittest.TestCase):
             if val1 and val2:
                 values.remove(f"{val1}/{val2}")
         self.assertEqual(len(values), 0)
-
-
-class BaseRuleTests(unittest.TestCase):
-    def setUp(self)->None:
-        super().setUp()
-        setup()
-
-    def tearDown(self)->None:
-        super().tearDown()
-        teardown()
-
-    # Test that BaseRecipe instantiation
-    def testBaseRule(self)->None:
-        with self.assertRaises(TypeError):
-            BaseRule("name", "", "")
-
-        class NewRule(BaseRule):
-            pass
-        with self.assertRaises(NotImplementedError):
-            NewRule("name", "", "")
-
-        class FullRule(BaseRule):
-            pattern_type = "pattern"
-            recipe_type = "recipe"
-            def _is_valid_recipe(self, recipe:Any)->None:
-                pass
-            def _is_valid_pattern(self, pattern:Any)->None:
-                pass
-        FullRule("name", valid_pattern_one, valid_recipe_one)
 
 
 class BaseMonitorTests(unittest.TestCase):

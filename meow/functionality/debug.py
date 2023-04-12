@@ -6,8 +6,8 @@ Author(s): David Marchant
 
 from typing import Any, Tuple
 
-from core.correctness.validation import check_type
-from core.correctness.vars import DEBUG_INFO, DEBUG_WARNING
+from meow_base.functionality.validation import check_type
+from meow_base.core.vars import DEBUG_INFO, DEBUG_WARNING
 
 
 def setup_debugging(print:Any=None, logging:int=0)->Tuple[Any,int]:

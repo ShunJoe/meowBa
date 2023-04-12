@@ -10,21 +10,21 @@ import sys
 
 from typing import Any, Tuple, Dict, List
 
-from core.base_recipe import BaseRecipe
-from core.base_handler import BaseHandler
-from core.correctness.meow import valid_event
-from core.correctness.validation import check_script, valid_string, \
+from meow_base.core.base_recipe import BaseRecipe
+from meow_base.core.base_handler import BaseHandler
+from meow_base.core.meow import valid_event
+from meow_base.functionality.validation import check_script, valid_string, \
     valid_dict, valid_dir_path
-from core.correctness.vars import VALID_VARIABLE_NAME_CHARS, PYTHON_FUNC, \
-    DEBUG_INFO, EVENT_TYPE_WATCHDOG, JOB_HASH, DEFAULT_JOB_QUEUE_DIR, \
-    EVENT_RULE, EVENT_PATH, JOB_TYPE_PYTHON, WATCHDOG_HASH, JOB_PARAMETERS, \
-    JOB_ID, WATCHDOG_BASE, META_FILE, \
+from meow_base.core.vars import VALID_VARIABLE_NAME_CHARS, \
+    PYTHON_FUNC, DEBUG_INFO, EVENT_TYPE_WATCHDOG, \
+    DEFAULT_JOB_QUEUE_DIR, EVENT_RULE, EVENT_PATH, JOB_TYPE_PYTHON, \
+    WATCHDOG_HASH, JOB_PARAMETERS, JOB_ID, WATCHDOG_BASE, META_FILE, \
     PARAMS_FILE, JOB_STATUS, STATUS_QUEUED, EVENT_TYPE, EVENT_RULE, \
     get_base_file
-from functionality.debug import setup_debugging, print_debug
-from functionality.file_io import make_dir, read_file_lines, write_file, \
-    write_yaml, lines_to_string
-from functionality.meow import create_job, replace_keywords
+from meow_base.functionality.debug import setup_debugging, print_debug
+from meow_base.functionality.file_io import make_dir, read_file_lines, \
+    write_file, write_yaml, lines_to_string
+from meow_base.functionality.meow import create_job, replace_keywords
 
 
 class PythonRecipe(BaseRecipe):
@@ -59,14 +59,14 @@ class PythonHandler(BaseHandler):
     debug_level:int
     # Where print messages are sent
     _print_target:Any
-    def __init__(self, job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR, 
+    def __init__(self, job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR, name:str="",
             print:Any=sys.stdout, logging:int=0)->None:
         """PythonHandler Constructor. This creates jobs to be executed as 
         python functions. This does not run as a continuous thread to 
         handle execution, but is invoked according to a factory pattern using 
         the handle function. Note that if this handler is given to a MeowRunner
-        object, the job_queue_dir will be overwridden but its"""
-        super().__init__()
+        object, the job_queue_dir will be overwridden by its"""
+        super().__init__(name=name)
         self._is_valid_job_queue_dir(job_queue_dir)
         self.job_queue_dir = job_queue_dir
         self._print_target, self.debug_level = setup_debugging(print, logging)
@@ -132,7 +132,6 @@ class PythonHandler(BaseHandler):
             event, 
             extras={
                 JOB_PARAMETERS:yaml_dict,
-                JOB_HASH: event[WATCHDOG_HASH],
                 PYTHON_FUNC:python_job_func
             }
         )
@@ -180,14 +179,14 @@ def python_job_func(job_dir):
     import os
     from datetime import datetime
     from io import StringIO
-    from core.correctness.vars import JOB_EVENT, JOB_ID, \
+    from meow_base.core.vars import JOB_EVENT, JOB_ID, \
         EVENT_PATH, META_FILE, PARAMS_FILE, \
-        JOB_STATUS, JOB_HASH, SHA256, STATUS_SKIPPED, JOB_END_TIME, \
+        JOB_STATUS, SHA256, STATUS_SKIPPED, JOB_END_TIME, \
         JOB_ERROR, STATUS_FAILED, get_base_file, \
         get_job_file, get_result_file
-    from functionality.file_io import read_yaml, write_yaml
-    from functionality.hashing import get_file_hash
-    from functionality.parameterisation import parameterize_python_script
+    from meow_base.functionality.file_io import read_yaml, write_yaml
+    from meow_base.functionality.hashing import get_hash
+    from meow_base.functionality.parameterisation import parameterize_python_script
 
     # Identify job files
     meta_file = os.path.join(job_dir, META_FILE)
@@ -203,19 +202,20 @@ def python_job_func(job_dir):
     # Check the hash of the triggering file, if present. This addresses 
     # potential race condition as file could have been modified since 
     # triggering event
-    if JOB_HASH in job:
+    if JOB_EVENT in job and WATCHDOG_HASH in job[JOB_EVENT]:
         # get current hash
-        triggerfile_hash = get_file_hash(job[JOB_EVENT][EVENT_PATH], SHA256)
+        triggerfile_hash = get_hash(job[JOB_EVENT][EVENT_PATH], SHA256)
         # If hash doesn't match, then abort the job. If its been modified, then
         # another job will have been scheduled anyway.
         if not triggerfile_hash \
-                or triggerfile_hash != job[JOB_HASH]:
+                or triggerfile_hash != job[JOB_EVENT][WATCHDOG_HASH]:
             job[JOB_STATUS] = STATUS_SKIPPED
             job[JOB_END_TIME] = datetime.now()
             msg = "Job was skipped as triggering file " + \
                 f"'{job[JOB_EVENT][EVENT_PATH]}' has been modified since " + \
                 "scheduling. Was expected to have hash " + \
-                f"'{job[JOB_HASH]}' but has '{triggerfile_hash}'."
+                f"'{job[JOB_EVENT][WATCHDOG_HASH]}' but has '" + \
+                f"{triggerfile_hash}'."
             job[JOB_ERROR] = msg
             write_yaml(job, meta_file)
             return

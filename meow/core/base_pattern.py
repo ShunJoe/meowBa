@@ -10,9 +10,9 @@ import itertools
 
 from typing import Any, Union, Tuple, Dict, List
 
-from core.correctness.vars import get_drt_imp_msg, \
-    VALID_PATTERN_NAME_CHARS, SWEEP_JUMP, SWEEP_START, SWEEP_STOP
-from core.correctness.validation import valid_string, check_type, \
+from meow_base.core.vars import VALID_PATTERN_NAME_CHARS, \
+    SWEEP_JUMP, SWEEP_START, SWEEP_STOP, get_drt_imp_msg
+from meow_base.functionality.validation import valid_string, check_type, \
     check_implementation, valid_dict
 
 
@@ -59,7 +59,11 @@ class BasePattern:
         """Validation check for 'name' variable from main constructor. Is 
         automatically called during initialisation. This does not need to be 
         overridden by child classes."""
-        valid_string(name, VALID_PATTERN_NAME_CHARS)
+        valid_string(
+            name, 
+            VALID_PATTERN_NAME_CHARS, 
+            hint="BasePattern.name"
+        )
 
     def _is_valid_recipe(self, recipe:Any)->None:
         """Validation check for 'recipe' variable from main constructor. Must 

@@ -1,2 +1,2 @@
 
-from patterns.file_event_pattern import FileEventPattern, WatchdogMonitor
+from .file_event_pattern import FileEventPattern, WatchdogMonitor

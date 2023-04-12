@@ -11,7 +11,7 @@ from os import makedirs, remove, rmdir, walk
 from os.path import exists, isfile, join
 from typing import Any, Dict, List
 
-from core.correctness.validation import valid_path
+from meow_base.functionality.validation import valid_path
 
 
 def make_dir(path:str, can_exist:bool=True, ensure_clean:bool=False):

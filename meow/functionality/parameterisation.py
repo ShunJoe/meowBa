@@ -10,7 +10,7 @@ from os import getenv
 from papermill.translators import papermill_translators
 from typing import Any, Dict, List
 
-from core.correctness.validation import check_script, check_type
+from meow_base.functionality.validation import check_script, check_type
 
 # Adapted from: https://github.com/rasmunk/notebook_parameterizer
 def parameterize_jupyter_notebook(jupyter_notebook:Dict[str,Any], 
@@ -114,6 +114,39 @@ def parameterize_python_script(script:List[str], parameters:Dict[str,Any],
                         "MISSING ENVIRONMENT VARIABLE: {}".format(env_var)
                     )
                 output_script[i] = f"{d_line[0]} = {repr(value)}"
+                
+    # Validate that the parameterized notebook is still valid
+    check_script(output_script)
+
+    return output_script
+
+def parameterize_bash_script(script:List[str], parameters:Dict[str,Any], 
+        expand_env_values:bool=False)->Dict[str,Any]:
+    check_script(script)
+    check_type(parameters, Dict
+        ,hint="parameterize_bash_script.parameters")
+
+    output_script = deepcopy(script)
+
+    for i, line in enumerate(output_script):
+        if "=" in line:
+            d_line = list(map(lambda x: x.replace(" ", ""), 
+                line.split("=")))
+            # Matching parameter name
+            if len(d_line) == 2 and d_line[0] in parameters:
+                value = parameters[d_line[0]]
+                # Whether to expand value from os env
+                if (
+                    expand_env_values
+                    and isinstance(value, str)
+                    and value.startswith("ENV_")
+                ):
+                    env_var = value.replace("ENV_", "")
+                    value = getenv(
+                        env_var, 
+                        "MISSING ENVIRONMENT VARIABLE: {}".format(env_var)
+                    )
+                output_script[i] = f"{d_line[0]}={repr(value)}"
                 
     # Validate that the parameterized notebook is still valid
     check_script(output_script)
