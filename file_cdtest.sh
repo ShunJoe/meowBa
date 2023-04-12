@@ -1,6 +1,6 @@
 #! /bin/bash
 
-for ((i = 1; i <= 1; i++)) do (
+for ((i = 1; i <= 3; i++)) do (
 	mkdir "dir${i}"
 	#sleep 0.1
 	> "file${i}"
