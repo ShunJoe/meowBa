@@ -1,19 +1,14 @@
 import select
-
+import os
 import pyfanotify as fan
 
-
-def foo(t):
-    print(f'calling `foo` every {t} seconds')
-
-
 if __name__ == '__main__':
-    foo_timeout = 10000
-    fanot = fan.Fanotify(fn=foo, fn_args=(foo_timeout,), fn_timeout=foo_timeout)
-    fanot.mark('/home', is_type='mp')
+    fanot = fan.Fanotify(init_fid=True)
+    path = os.path.abspath('..')
+    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_MOVED_FROM | fan.FAN_ONDIR, is_type='fs')
     fanot.start()
 
-    cli = fan.FanotifyClient(fanot, path_pattern='/home/ibli/Documents/GitHub/meowBa/*')
+    cli = fan.FanotifyClient(fanot, path_pattern=path+'/*')
     poll = select.poll()
     poll.register(cli.sock.fileno(), select.POLLIN)
     try:
