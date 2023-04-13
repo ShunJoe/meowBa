@@ -16,7 +16,7 @@ if __name__ == '__main__':
             x = {}
             for i in cli.get_events():
                 i.ev_types = fan.evt_to_str(i.ev_types)
-                x.setdefault(i.path, []).append(i)
+                x.setdefault(i.path, [i.pid, i.ev_types])
             if x:
                 print(x)
     except:
