@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   ssize_t buflen, linklen;
   struct fanotify_event_metadata *metadata;
   CHK(fan = fanotify_init(FAN_CLASS_NOTIF, O_RDONLY), -1);
-  CHK(fanotify_mark(fan, FAN_MARK_ADD,
+  CHK(fanotify_mark(fan, FAN_MARK_ADD | FAN_MARK_MOUNT, FAN_MODIFY |
                     FAN_OPEN | FAN_EVENT_ON_CHILD, AT_FDCWD, "/"), -1);
   for (;;) {
     CHK(buflen = read(fan, buf, sizeof(buf)), -1);
