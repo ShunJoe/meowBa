@@ -1,10 +1,9 @@
-#! /bin/bash
 j=100000
-for ((i = 1; i <= j; i++)) do (
-	mkdir "dir${i}" & mkdir "dir${i}copy"
-	> "file${i}" & > "file${i}copy"
-	rmdir "dir${i}" & rmdir "dir${i}copy"
-	rm "file${i}" & rm "file${i}copy"
-)
-wait
-done
+
+seq 1 $j | parallel -j 4 '
+    i={}
+    mkdir "dir${i}" "dir${i}copy"
+    touch "file${i}" "file${i}copy"
+    rm "file${i}" "file${i}copy"
+    rmdir "dir${i}" "dir${i}copy"
+'
