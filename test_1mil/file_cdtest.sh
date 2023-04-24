@@ -1,4 +1,4 @@
-j=100000
+j=10
 
 seq 1 $j | parallel -j 4 '
     i={}
