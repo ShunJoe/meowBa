@@ -25,7 +25,7 @@ from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     PapermillHandler
 from meow_base.recipes.python_recipe import PythonRecipe, PythonHandler
 from meow_base.recipes.bash_recipe import BashRecipe, BashHandler
-from shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
+from meow_base.tests.shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
     TEST_JOB_QUEUE, COMPLETE_PYTHON_SCRIPT, BAREBONES_PYTHON_SCRIPT, \
     BAREBONES_NOTEBOOK, COMPLETE_BASH_SCRIPT, BAREBONES_BASH_SCRIPT, \
     setup, teardown, count_non_locks

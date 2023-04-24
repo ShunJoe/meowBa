@@ -14,7 +14,7 @@ from meow_base.patterns.file_event_pattern import FileEventPattern, \
     WatchdogMonitor, _DEFAULT_MASK
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
 from meow_base.recipes.python_recipe import PythonRecipe
-from shared import BAREBONES_NOTEBOOK, TEST_MONITOR_BASE, \
+from meow_base.tests.shared import BAREBONES_NOTEBOOK, TEST_MONITOR_BASE, \
     COUNTING_PYTHON_SCRIPT, setup, teardown
 
 

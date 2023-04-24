@@ -38,7 +38,7 @@ from meow_base.functionality.requirements import REQUIREMENT_PYTHON, \
     create_python_requirements, check_requirements
 from meow_base.patterns.file_event_pattern import FileEventPattern
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
-from shared import TEST_MONITOR_BASE, COMPLETE_NOTEBOOK, APPENDING_NOTEBOOK, \
+from meow_base.tests.shared import TEST_MONITOR_BASE, COMPLETE_NOTEBOOK, APPENDING_NOTEBOOK, \
     COMPLETE_PYTHON_SCRIPT, valid_recipe_two, valid_recipe_one, \
     valid_pattern_one, valid_pattern_two, setup, teardown
 

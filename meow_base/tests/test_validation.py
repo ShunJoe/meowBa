@@ -17,7 +17,7 @@ from meow_base.core.vars import VALID_NAME_CHARS, SHA256, \
     WATCHDOG_BASE, WATCHDOG_HASH
 from meow_base.functionality.file_io import make_dir
 from meow_base.functionality.meow import create_rule
-from shared import TEST_MONITOR_BASE, valid_pattern_one, valid_recipe_one, \
+from meow_base.tests.shared import TEST_MONITOR_BASE, valid_pattern_one, valid_recipe_one, \
     setup, teardown
 
 class ValidationTests(unittest.TestCase):
