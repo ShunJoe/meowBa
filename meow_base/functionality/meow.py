@@ -16,7 +16,7 @@ from meow_base.functionality.validation import check_type, valid_dict, \
 from meow_base.core.vars import EVENT_PATH, EVENT_RULE, \
     EVENT_TYPE, EVENT_TYPE_WATCHDOG, JOB_CREATE_TIME, JOB_EVENT, JOB_ID, \
     JOB_PATTERN, JOB_RECIPE, JOB_REQUIREMENTS, JOB_RULE, JOB_STATUS, \
-    JOB_TYPE, STATUS_QUEUED, WATCHDOG_BASE, WATCHDOG_HASH, SWEEP_JUMP, \
+    JOB_TYPE, STATUS_CREATING, WATCHDOG_BASE, WATCHDOG_HASH, SWEEP_JUMP, \
     SWEEP_START, SWEEP_STOP
 from meow_base.functionality.naming import generate_job_id
 
@@ -32,6 +32,8 @@ KEYWORD_EXTENSION = "{EXTENSION}"
 KEYWORD_JOB = "{JOB}"
 
 
+# TODO make this generic for all event types, currently very tied to file 
+# events
 def replace_keywords(old_dict:Dict[str,str], job_id:str, src_path:str, 
             monitor_base:str)->Dict[str,str]:
     """Function to replace all MEOW magic words in a dictionary with dynamic 
@@ -128,8 +130,8 @@ def create_watchdog_event(path:str, rule:Any, base:str, hash:str,
         }
     )
 
-def create_job(job_type:str, event:Dict[str,Any], extras:Dict[Any,Any]={}
-        )->Dict[Any,Any]:
+def create_job_metadata_dict(job_type:str, event:Dict[str,Any], 
+        extras:Dict[Any,Any]={})->Dict[Any,Any]:
     """Function to create a MEOW job dictionary."""
     job_dict = {
         #TODO compress event?
@@ -139,7 +141,7 @@ def create_job(job_type:str, event:Dict[str,Any], extras:Dict[Any,Any]={}
         JOB_PATTERN: event[EVENT_RULE].pattern.name,
         JOB_RECIPE: event[EVENT_RULE].recipe.name,
         JOB_RULE: event[EVENT_RULE].name,
-        JOB_STATUS: STATUS_QUEUED,
+        JOB_STATUS: STATUS_CREATING,
         JOB_CREATE_TIME: datetime.now(),
         JOB_REQUIREMENTS: event[EVENT_RULE].recipe.requirements
     }

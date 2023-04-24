@@ -85,6 +85,7 @@ DEFAULT_JOB_QUEUE_DIR = "job_queue"
 DEFAULT_JOB_OUTPUT_DIR = "job_output"
 
 # meow jobs
+JOB_FILE = "job.sh"
 JOB_TYPE = "job_type"
 JOB_TYPE_BASH = "bash"
 JOB_TYPE_PYTHON = "python"
@@ -125,6 +126,7 @@ JOB_REQUIREMENTS = "requirements"
 JOB_PARAMETERS = "parameters"
 
 # job statuses
+STATUS_CREATING = "creating"
 STATUS_QUEUED = "queued"
 STATUS_RUNNING = "running"
 STATUS_SKIPPED = "skipped"
@@ -145,6 +147,9 @@ DEBUG_ERROR = 1
 DEBUG_WARNING = 2
 DEBUG_INFO = 3
 
+# Locking
+LOCK_EXT = ".lock"
+
 # debug message functions
 def get_drt_imp_msg(base_class):
     return f"{base_class.__name__} may not be instantiated directly. " \
@@ -154,12 +159,3 @@ def get_not_imp_msg(parent_class, class_function):
     return f"Children of the '{parent_class.__name__}' class must implement " \
         f"the '{class_function.__name__}({signature(class_function)})' " \
         "function"
-
-def get_base_file(job_type:str):
-    return JOB_TYPES[job_type][0]
-
-def get_job_file(job_type:str):
-    return JOB_TYPES[job_type][1]
-
-def get_result_file(job_type:str):
-    return JOB_TYPES[job_type][2]

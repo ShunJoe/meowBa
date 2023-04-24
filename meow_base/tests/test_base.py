@@ -1,7 +1,7 @@
 
 import unittest
  
-from typing import Any, Union, Tuple, Dict
+from typing import Any, Union, Tuple, Dict, List
 
 from meow_base.core.base_conductor import BaseConductor
 from meow_base.core.base_handler import BaseHandler
@@ -146,6 +146,7 @@ class BasePatternTests(unittest.TestCase):
         self.assertEqual(len(values), 0)
 
 
+# TODO test for base functions
 class BaseMonitorTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
@@ -171,32 +172,15 @@ class BaseMonitorTests(unittest.TestCase):
                 pass
             def stop(self):
                 pass
-            def _is_valid_patterns(self, patterns:Dict[str,BasePattern])->None:
-                pass
-            def _is_valid_recipes(self, recipes:Dict[str,BaseRecipe])->None:
-                pass
-            def add_pattern(self, pattern:BasePattern)->None:
-                pass
-            def update_pattern(self, pattern:BasePattern)->None:
-                pass
-            def remove_pattern(self, pattern:Union[str,BasePattern])->None:
-                pass
-            def get_patterns(self)->None:
-                pass
-            def add_recipe(self, recipe:BaseRecipe)->None:
-                pass
-            def update_recipe(self, recipe:BaseRecipe)->None:
-                pass
-            def remove_recipe(self, recipe:Union[str,BaseRecipe])->None:
-                pass
-            def get_recipes(self)->None:
-                pass
-            def get_rules(self)->None:
-                pass
+            def _get_valid_pattern_types(self)->List[type]:
+                return [BasePattern]
+            def _get_valid_recipe_types(self)->List[type]:
+                return [BaseRecipe]
             
         FullTestMonitor({}, {})
 
 
+# TODO test for base functions
 class BaseHandleTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
@@ -218,21 +202,19 @@ class BaseHandleTests(unittest.TestCase):
             TestHandler()
 
         class FullTestHandler(BaseHandler):
-            def handle(self, event):
-                pass
-            def start(self):
-                pass
-            def stop(self):
-                pass
-            def _is_valid_inputs(self, inputs:Any)->None:
-                pass
             def valid_handle_criteria(self, event:Dict[str,Any]
                     )->Tuple[bool,str]:
+                pass
+            def get_created_job_type(self)->str:
+                pass
+            def create_job_recipe_file(self, job_dir:str, event:Dict[str,Any], 
+                    params_dict:Dict[str,Any])->str:
                 pass
 
         FullTestHandler()
 
 
+# TODO test for base functions
 class BaseConductorTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
@@ -254,9 +236,6 @@ class BaseConductorTests(unittest.TestCase):
             TestConductor()
 
         class FullTestConductor(BaseConductor):
-            def execute(self, job_dir:str)->None:
-                pass
-
             def valid_execute_criteria(self, job:Dict[str,Any]
                     )->Tuple[bool,str]:
                 pass
