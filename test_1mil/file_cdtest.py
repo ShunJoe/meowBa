@@ -1,3 +1,4 @@
+import argparse
 import os
 import multiprocessing
 
@@ -13,6 +14,10 @@ def create_files_and_dirs(i):
     os.rmdir(dir_path)
 
 if __name__ == "__main__":
-    j = 1000000
+    parser = argparse.ArgumentParser()
+    parser.add_argument("j", type=int, help="number of iterations")
+    args = parser.parse_args()
+
+    j = args.j
     with multiprocessing.Pool(processes=2) as pool:
         pool.map(create_files_and_dirs, range(1, j+1))

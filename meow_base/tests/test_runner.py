@@ -1270,7 +1270,7 @@ class MeowTests(unittest.TestCase):
             loops += 1
 
         runner.stop()
-
+        #FAILS
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), good * 3)
         for job_dir in os.listdir(TEST_JOB_OUTPUT):
             metafile = os.path.join(TEST_JOB_OUTPUT, job_dir, META_FILE)
