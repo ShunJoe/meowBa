@@ -13,6 +13,6 @@ def create_files_and_dirs(i):
     os.rmdir(dir_path)
 
 if __name__ == "__main__":
-    j = 1000000
+    j = 1000
     with multiprocessing.Pool(processes=2) as pool:
         pool.map(create_files_and_dirs, range(1, j+1))
