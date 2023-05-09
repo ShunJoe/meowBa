@@ -17,7 +17,7 @@ matches = re.findall(pattern, text)
 del_pattern = r'\b(moved_from)\b'
 del_matches = re.findall(del_pattern, text)
 
-create_pattern = r'\b(create)\b'
+create_pattern = r'\b(openat(()))\b'
 create_matches = re.findall(create_pattern, text)
 
 # Use set to count the number of unique variations
