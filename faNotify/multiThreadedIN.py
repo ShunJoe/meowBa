@@ -1,31 +1,22 @@
-import select
 import os
-import pyfanotify as fan
 import subprocess
 import sys
 import threading
+import inotify.adapters
 
 def process_events(cli):
-    while True:
-        x = {}
-        for i in cli.get_events():
-            i.ev_types = fan.evt_to_str(i.ev_types)
-            x.setdefault(i.path, [i.pid, i.ev_types])
-        if x:
-            print(x)
+    for event in i.event_gen(yield_nones=False):
+        (_, type_names, path, filename) = event
+        print("Path: {}, File: {}, Event types: {}".format(path, filename, type_names))
 
 if __name__ == '__main__':
-    fanot = fan.Fanotify(init_fid=True)
-    path = os.path.abspath('.')
-    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_MOVED_FROM | fan.FAN_ONDIR | fan.FAN_MODIFY, is_type='fs')
-    fanot.start()
+    i = inotify.adapters.Inotify()
 
-    cli = fan.FanotifyClient(fanot, path_pattern=path+'/*')
-    poll = select.poll()
-    poll.register(cli.sock.fileno(), select.POLLIN)
+    path = os.path.abspath('.')
+    i.add_watch(path, mask=inotify.constants.IN_CREATE | inotify.constants.IN_MOVED_FROM | inotify.constants.IN_ISDIR | inotify.constants.IN_MODIFY)
 
     # Start the event processing thread
-    t = threading.Thread(target=process_events, args=(cli,))
+    t = threading.Thread(target=process_events, args=(i,))
     t.daemon = True
     t.start()
 
@@ -51,5 +42,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
-    cli.close()
-    fanot.stop()
+    i.remove_watch(path)
