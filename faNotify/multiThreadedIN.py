@@ -13,8 +13,12 @@ if __name__ == '__main__':
     i = inotify.adapters.Inotify()
 
     path = os.path.abspath('.')
-    i.add_watch(path, mask=inotify.constants.IN_CREATE | inotify.constants.IN_MOVED_FROM | inotify.constants.IN_ISDIR | inotify.constants.IN_MODIFY)
-
+    i.add_watch(path, mask=(inotify.constants.IN_CREATE |
+                        inotify.constants.IN_DELETE |
+                        inotify.constants.IN_DELETE_SELF |
+                        inotify.constants.IN_MOVED_FROM |
+                        inotify.constants.IN_MOVED_TO |
+                        inotify.constants.IN_ISDIR))
     # Start the event processing thread
     t = threading.Thread(target=process_events, args=(i,))
     t.daemon = True
