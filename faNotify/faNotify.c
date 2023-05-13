@@ -14,6 +14,7 @@
 
 #define EVENT_SIZE  (sizeof (struct fanotify_event_metadata))
 #define EVENT_BUF_LEN     (1024 * (EVENT_SIZE + 16))
+#define PATH_MAX 1024
 
 void* process_events(void *fdp) {
     struct fanotify_event_metadata event[EVENT_BUF_LEN];
@@ -30,8 +31,18 @@ void* process_events(void *fdp) {
         
         while (i < length) {
             struct fanotify_event_metadata *metadata = (struct fanotify_event_metadata *) &event[i];
-            printf ("Received event: pid=%u path=%s\n", metadata->pid, metadata->file_name);
+            char path[PATH_MAX];
+            snprintf(path, PATH_MAX, "/proc/self/fd/%d", metadata->fd);
+            char file_path[PATH_MAX];
+            ssize_t path_len = readlink(path, file_path, PATH_MAX - 1);
+            if (path_len == -1) {
+                perror("readlink");
+                exit(EXIT_FAILURE);
+            }
+            file_path[path_len] = '\0';
+            printf ("Received event: pid=%u path=%s\n", metadata->pid, file_path);
             i += EVENT_SIZE;
+            close(metadata->fd);  // Always remember to close the file descriptor!
         }
     }
 }
@@ -53,7 +64,7 @@ int main(int argc, char *argv[]) {
     dirname(script_dir);
 
     /* Create the file descriptor for accessing the fanotify API */
-    fd = fanotify_init(FAN_CLOEXEC | FAN_NONBLOCK, O_RDONLY | O_LARGEFILE);
+    fd = fanotify_init(FAN_CLOEXEC | FAN_NONBLOCK, O_RDONLY);
     if (fd == -1) {
         perror ("fanotify_init");
         exit(EXIT_FAILURE);
@@ -92,16 +103,6 @@ int main(int argc, char *argv[]) {
     } else if (pid < 0) { // Fork failed
         printf("Fork failed!\n");
         exit(-1);
-    }
-
-    /* Wait for incoming events */
-    poll_num = poll(fds, nfds, -1);
-    if (poll_num == -1) {
-        if (errno == EINTR)     /* Interrupted by a signal */
-            continue;           /* Restart poll() */
-        
-        perror("poll");        /* Unexpected error */
-        exit(EXIT_FAILURE);
     }
 
     int status;
