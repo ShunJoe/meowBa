@@ -17,7 +17,7 @@ from meow_base.patterns.file_event_pattern import FileEventPattern, \
     EVENT_TYPE_WATCHDOG, WATCHDOG_EVENT_KEYS, create_watchdog_event
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
 from meow_base.recipes.python_recipe import PythonRecipe
-from shared import BAREBONES_NOTEBOOK, TEST_MONITOR_BASE, \
+from meow_base.tests.shared import BAREBONES_NOTEBOOK, TEST_MONITOR_BASE, \
     COUNTING_PYTHON_SCRIPT, APPENDING_NOTEBOOK, setup, teardown
 
 

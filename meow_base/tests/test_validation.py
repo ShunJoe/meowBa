@@ -18,7 +18,7 @@ from meow_base.functionality.file_io import make_dir
 from meow_base.functionality.meow import create_rule
 from meow_base.patterns.file_event_pattern import WATCHDOG_BASE, \
     WATCHDOG_HASH, valid_watchdog_event
-from shared import TEST_MONITOR_BASE, valid_pattern_one, valid_recipe_one, \
+from meow_base.tests.shared import TEST_MONITOR_BASE, valid_pattern_one, valid_recipe_one, \
     setup, teardown
 
 class ValidationTests(unittest.TestCase):
