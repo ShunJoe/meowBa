@@ -11,13 +11,13 @@ from meow_base.core.meow import valid_event
 from meow_base.functionality.validation import check_type, valid_dict, \
     valid_string, valid_dir_path
 from meow_base.core.vars import DEBUG_INFO, DEFAULT_JOB_QUEUE_DIR, \
-    VALID_VARIABLE_NAME_CHARS, EVENT_RULE, EVENT_TYPE, EVENT_TYPE_WATCHDOG, \
+    VALID_VARIABLE_NAME_CHARS, EVENT_RULE, EVENT_TYPE, \
     JOB_TYPE_BASH
 from meow_base.functionality.debug import setup_debugging, print_debug
 from meow_base.functionality.file_io import valid_path, make_dir, write_file, \
     lines_to_string
 from meow_base.functionality.parameterisation import parameterize_bash_script
-
+from meow_base.patterns.file_event_pattern import EVENT_TYPE_WATCHDOG
 
 class BashRecipe(BaseRecipe):
     # A path to the bash script used to create this recipe

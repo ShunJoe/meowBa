@@ -1379,7 +1379,7 @@ IDMC_UTILS_PYTHON_SCRIPT = [
 GENERATE_PYTHON_SCRIPT = [
     "import numpy as np",
     "import random",
-    "import foam_ct_phantom as foam_ct_phantom",
+    "import foam_ct_phantom.foam_ct_phantom as foam_ct_phantom",
     "",
     "def generate_foam(nspheres_per_unit, vx, vy, vz, res):",
     "    def maxsize_func(x, y, z):",

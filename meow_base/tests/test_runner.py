@@ -24,7 +24,7 @@ from meow_base.patterns.file_event_pattern import WatchdogMonitor, \
 from meow_base.recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
 from meow_base.recipes.python_recipe import PythonHandler, PythonRecipe
-from meow_base.tests.shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
+from shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
     MAKER_RECIPE, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, \
     FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, \
     GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_PYTHON_SCRIPT, \
@@ -1270,7 +1270,7 @@ class MeowTests(unittest.TestCase):
             loops += 1
 
         runner.stop()
-        #FAILS
+
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), good * 3)
         for job_dir in os.listdir(TEST_JOB_OUTPUT):
             metafile = os.path.join(TEST_JOB_OUTPUT, job_dir, META_FILE)

@@ -10,7 +10,7 @@ from meow_base.core.base_pattern import BasePattern
 from meow_base.core.base_recipe import BaseRecipe
 from meow_base.core.vars import SWEEP_STOP, SWEEP_JUMP, SWEEP_START
 from meow_base.patterns.file_event_pattern import FileEventPattern
-from meow_base.tests.shared import setup, teardown
+from shared import setup, teardown
 
 
 class BaseRecipeTests(unittest.TestCase):

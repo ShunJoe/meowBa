@@ -44,12 +44,8 @@ SHA256 = "sha256"
 # meow events
 EVENT_TYPE = "event_type"
 EVENT_PATH = "event_path"
-EVENT_RULE = "rule"
-
-# watchdog events
-EVENT_TYPE_WATCHDOG = "watchdog"
-WATCHDOG_BASE = "monitor_base"
-WATCHDOG_HASH = "file_hash"
+EVENT_RULE = "event_rule"
+EVENT_TIME = "event_time"
 
 # inotify events
 FILE_CREATE_EVENT = "file_created"

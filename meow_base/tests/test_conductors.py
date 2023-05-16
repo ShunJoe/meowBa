@@ -5,6 +5,7 @@ import unittest
 
 from datetime import datetime
 from multiprocessing import Pipe
+from time import time
 from typing import Dict
 
 from meow_base.core.vars import JOB_TYPE_PYTHON, SHA256, \
@@ -12,20 +13,21 @@ from meow_base.core.vars import JOB_TYPE_PYTHON, SHA256, \
     JOB_EVENT, META_FILE, JOB_STATUS, JOB_ERROR, JOB_TYPE, \
     JOB_PATTERN, STATUS_DONE, JOB_TYPE_PAPERMILL, JOB_RECIPE, JOB_RULE, \
     JOB_CREATE_TIME, JOB_REQUIREMENTS, EVENT_PATH, EVENT_RULE, EVENT_TYPE, \
-    EVENT_TYPE_WATCHDOG, JOB_TYPE_BASH, JOB_FILE
+    JOB_TYPE_BASH, JOB_FILE
 from meow_base.conductors import LocalPythonConductor, LocalBashConductor
 from meow_base.functionality.file_io import read_file, read_yaml, write_file, \
     write_yaml, lines_to_string, make_dir, threadsafe_read_status
 from meow_base.functionality.hashing import get_hash
-from meow_base.functionality.meow import create_watchdog_event, create_job_metadata_dict, \
+from meow_base.functionality.meow import create_job_metadata_dict, \
     create_rule
 from meow_base.functionality.parameterisation import parameterize_bash_script
-from meow_base.patterns.file_event_pattern import FileEventPattern
+from meow_base.patterns.file_event_pattern import FileEventPattern, \
+    EVENT_TYPE_WATCHDOG, create_watchdog_event
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     PapermillHandler
 from meow_base.recipes.python_recipe import PythonRecipe, PythonHandler
 from meow_base.recipes.bash_recipe import BashRecipe, BashHandler
-from meow_base.tests.shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
+from shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
     TEST_JOB_QUEUE, COMPLETE_PYTHON_SCRIPT, BAREBONES_PYTHON_SCRIPT, \
     BAREBONES_NOTEBOOK, COMPLETE_BASH_SCRIPT, BAREBONES_BASH_SCRIPT, \
     setup, teardown, count_non_locks
@@ -101,6 +103,7 @@ class PythonTests(unittest.TestCase):
             file_path,
             rule,
             TEST_MONITOR_BASE,
+            time(),
             file_hash
         )
 
@@ -192,6 +195,7 @@ class PythonTests(unittest.TestCase):
             file_path,
             rule,
             TEST_MONITOR_BASE,
+            time(),
             file_hash
         )
 
@@ -268,6 +272,7 @@ class PythonTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -333,6 +338,7 @@ class PythonTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -401,6 +407,7 @@ class PythonTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -598,6 +605,7 @@ class BashTests(unittest.TestCase):
             file_path,
             rule,
             TEST_MONITOR_BASE,
+            time(),
             file_hash
         )
 
@@ -689,6 +697,7 @@ class BashTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -755,6 +764,7 @@ class BashTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -839,6 +849,7 @@ class BashTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={
@@ -908,6 +919,7 @@ class BashTests(unittest.TestCase):
                 file_path,
                 rule,
                 TEST_MONITOR_BASE,
+                time(),
                 file_hash
             ),
             extras={

@@ -17,13 +17,13 @@ from meow_base.core.meow import valid_event
 from meow_base.functionality.validation import check_script, valid_string, \
     valid_dict, valid_dir_path
 from meow_base.core.vars import VALID_VARIABLE_NAME_CHARS, \
-    DEBUG_INFO, EVENT_TYPE_WATCHDOG, DEFAULT_JOB_QUEUE_DIR, EVENT_RULE, \
+    DEBUG_INFO, DEFAULT_JOB_QUEUE_DIR, EVENT_RULE, \
     JOB_TYPE_PYTHON, EVENT_TYPE, EVENT_RULE
 from meow_base.functionality.debug import setup_debugging, print_debug
 from meow_base.functionality.file_io import make_dir, write_file, \
     lines_to_string
 from meow_base.functionality.parameterisation import parameterize_python_script
-
+from meow_base.patterns.file_event_pattern import EVENT_TYPE_WATCHDOG
 
 class PythonRecipe(BaseRecipe):
     def __init__(self, name:str, recipe:List[str], parameters:Dict[str,Any]={}, 

@@ -14,9 +14,10 @@ from typing import Any, Tuple, Dict, Union
 from time import sleep
 
 from meow_base.core.vars import VALID_CHANNELS, EVENT_RULE, EVENT_PATH, \
-    VALID_HANDLER_NAME_CHARS, META_FILE, JOB_ID, WATCHDOG_BASE, JOB_FILE, \
-    JOB_PARAMETERS, get_drt_imp_msg
+    VALID_HANDLER_NAME_CHARS, META_FILE, JOB_ID, JOB_FILE, JOB_PARAMETERS, \
+    get_drt_imp_msg
 from meow_base.core.meow import valid_event
+from meow_base.patterns.file_event_pattern import WATCHDOG_HASH
 from meow_base.functionality.file_io import threadsafe_write_status, \
     threadsafe_update_status, make_dir, write_file, lines_to_string
 from meow_base.functionality.validation import check_implementation, \
@@ -179,6 +180,7 @@ class BaseHandler:
 
         # Get updated job parameters
         # TODO replace this with generic implementation
+        from meow_base.patterns.file_event_pattern import WATCHDOG_BASE
         params_dict = replace_keywords(
             params_dict,
             meow_job[JOB_ID],
@@ -242,8 +244,8 @@ class BaseHandler:
             "#!/bin/bash",
             "",
             "# Get job params",
-            "given_hash=$(grep 'file_hash: *' $(dirname $0)/job.yml | tail -n1 | cut -c 14-)",
-            "event_path=$(grep 'event_path: *' $(dirname $0)/job.yml | tail -n1 | cut -c 15-)",
+            f"given_hash=$(grep '{WATCHDOG_HASH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 14-)",
+            f"event_path=$(grep '{EVENT_PATH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 15-)",
             "",
             "echo event_path: $event_path",
             "echo given_hash: $given_hash",
