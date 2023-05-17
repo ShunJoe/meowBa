@@ -16,7 +16,7 @@ from meow_base.functionality.validation import check_type, valid_dict, \
 from meow_base.core.vars import EVENT_PATH, EVENT_RULE, EVENT_TIME, \
     EVENT_TYPE, JOB_CREATE_TIME, JOB_EVENT, JOB_ID, \
     JOB_PATTERN, JOB_RECIPE, JOB_REQUIREMENTS, JOB_RULE, JOB_STATUS, \
-    JOB_TYPE, STATUS_CREATING, SWEEP_JUMP, SWEEP_START, SWEEP_STOP
+    JOB_TYPE, STATUS_CREATING, SWEEP_JUMP, SWEEP_START, SWEEP_STOP, CREATED_FILES
 from meow_base.functionality.naming import generate_job_id
 
 # mig trigger keyword replacements
@@ -128,6 +128,7 @@ def create_job_metadata_dict(job_type:str, event:Dict[str,Any],
         JOB_STATUS: STATUS_CREATING,
         JOB_CREATE_TIME: datetime.now(),
         JOB_REQUIREMENTS: event[EVENT_RULE].recipe.requirements
+        ,CREATED_FILES: []
     }
 
     return {**extras, **job_dict}

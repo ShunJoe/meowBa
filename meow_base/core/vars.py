@@ -146,6 +146,9 @@ DEBUG_INFO = 3
 # Locking
 LOCK_EXT = ".lock"
 
+#Tracing
+CREATED_FILES = "created files"
+
 # debug message functions
 def get_drt_imp_msg(base_class):
     return f"{base_class.__name__} may not be instantiated directly. " \
