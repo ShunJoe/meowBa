@@ -8,6 +8,7 @@ Author(s): David Marchant
 import shutil
 import subprocess
 import os 
+import re
 
 from datetime import datetime
 from threading import Event, Thread
@@ -176,11 +177,11 @@ class BaseConductor:
         if not abort:
             try:
                 result = subprocess.call(
-                    f'strace -o {os.path.join(job_dir, job["id"])}.log --trace=open,openat,unlink,unlinkat --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
+                    f'strace -o {os.path.join(job_dir, job["id"])}.log --trace=open,openat --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
                     cwd=".", 
                     shell = True
                 )
-
+                
                 if result == 0:
                     #Find the created files from the log file: 
                     log_file = os.path.join(job_dir, f'{job["id"]}.log')
@@ -196,13 +197,36 @@ class BaseConductor:
                     unique_filenames = set()
                     with open(log_file, 'r') as file: 
                         for line in file: 
-                            if job['id'] in line:
+                            if job['id']  in line:
                                 start_index = line.index('/') + 1
                                 end_index = line.index('"', start_index)
                                 filename = line[start_index:end_index]
                                 unique_filenames.add(os.path.basename(filename))
+                            #If there is no path to some weird kernel stuff and the job id is not in the path, then it is probably also
+                            # a file name that we are interested in. Probably need to parse this stuff better. Parsing seems a bad solution.     
+                            if '/' not in line: 
+                                match = re.search(r'"([^"]+)"', line)
+                                if match:
+                                    filename = match.group(1)
+                                    unique_filenames.add(filename)
+
+                    #if it takes the job_id name itself with no extensions its taking a directory that was created for its job. If we want this information uncomment the below: 
+                    key = job['id']
+                    items_to_remove = []
+                    for filename in unique_filenames:
+                        if key in filename:
+                            parts = filename.split('.')
+                            if len(parts)==1:
+                                items_to_remove.append(key)
+                    for item in items_to_remove:
+                        unique_filenames.discard(item)
 
 
+                            
+
+                    #delete file because we are done with it: 
+                    os.remove(f"{os.path.join(job_dir, job['id'])}.log")
+                    
                     # Update the status file with the finalised status and created files
                     threadsafe_update_status(
                         {

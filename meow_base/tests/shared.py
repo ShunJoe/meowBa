@@ -1242,6 +1242,52 @@ GENERATOR_NOTEBOOK = {
 BAREBONES_PYTHON_SCRIPT = [
     ""
 ]
+
+MAKE_4FILES_PYTHON_SCRIPT = [
+    "import os",
+    "#Setup parameters",
+    "current_directory = 'blabla'",
+    "file_names = ['file1', 'file2', 'file3', 'file4']",
+    "",
+    "for file_name in file_names:",
+    "   file_path = os.path.join(current_directory, file_name)",
+    "   with open(file_name, 'w') as file:",
+    "       # Create an empty file",
+    "       pass",
+    "for file_name in file_names:",
+    "   file_path = os.path.join(current_directory, file_name)",
+    "   os.remove(file_path)"
+]
+
+MAKE_4FILES_PYTHON_MULTITHREADED_SCRIPT = [
+    "import threading",
+    "import os",
+    "#Setup parameters",
+    "current_directory = 'blabla'",
+    "file_names = ['file1', 'file2', 'file3', 'file4']",
+    "",
+    "",
+    "def create_file(file_name):",
+    "   with open(file_name, 'w') as file:",
+    "       file_path = os.path.join(current_directory, file_name)",
+    "       # Create an empty file",
+    "       pass",
+    "",
+    "file_names = ['file1', 'file2', 'file3', 'file4']",
+    "",
+    "# Create two threads",
+    "threads = []",
+    "for file_name in file_names:",
+    "    thread = threading.Thread(target=create_file, args=(file_name,))",
+    "    threads.append(thread)",
+    "    thread.start()",
+    "# Wait for all threads to finish",
+    "for thread in threads:",
+    "    thread.join()",
+    "for file_name in file_names:",
+    "   os.remove(os.path.join(current_directory,file_name))"
+
+]
 COMPLETE_PYTHON_SCRIPT = [
     "import os",
     "# Setup parameters",
