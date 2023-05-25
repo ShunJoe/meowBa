@@ -1,13 +1,18 @@
+import select
 import os
+import pyfanotify as fan
 import subprocess
 import sys
 import threading
-import inotify.adapters
 
-def process_events(i):
-    for event in i.event_gen(yield_nones=False):
-        (_, type_names, path, filename) = event
-        print("Path: {}, File: {}, Event types: {}".format(path, filename, type_names))
+def process_events(cli):
+    while True:
+        x = {}
+        for i in cli.get_events():
+            i.ev_types = fan.evt_to_str(i.ev_types)
+            x.setdefault(i.path, [i.pid, i.ev_types])
+        if x:
+            print(x)
 
 def run_command(args):
     if args[0] == "pytest":
@@ -23,13 +28,17 @@ def run_command(args):
     subprocess.run(cmd)
 
 if __name__ == '__main__':
-    i = inotify.adapters.Inotify()
-
+    fanot = fan.Fanotify(init_fid=True)
     path = os.path.abspath('.')
-    i.add_watch(path, mask=inotify.constants.IN_CREATE | inotify.constants.IN_MOVED_FROM | inotify.constants.IN_ISDIR | inotify.constants.IN_MODIFY)
+    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_ONDIR , is_type='fs')
+    fanot.start()
+
+    cli = fan.FanotifyClient(fanot, path_pattern=path+'/*')
+    poll = select.poll()
+    poll.register(cli.sock.fileno(), select.POLLIN)
 
     # Start the event processing thread
-    t = threading.Thread(target=process_events, args=(i,))
+    t = threading.Thread(target=process_events, args=(cli,))
     t.daemon = True
     t.start()
 
@@ -45,4 +54,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
-    i.remove_watch(path)
+    cli.close()
+    fanot.stop()

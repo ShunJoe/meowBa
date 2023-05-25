@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 
+
 def process_events(cli):
     while True:
         x = {}
@@ -13,11 +14,30 @@ def process_events(cli):
             x.setdefault(i.path, [i.pid, i.ev_types])
         if x:
             print(x)
+            
+            
+
+        
+        
+def run_command(args):
+    if args[0] == "pytest":
+        cmd = ['pytest'] + args[1:]
+    elif args[0].endswith('.py'):
+        cmd = ['python3'] + args
+    elif args[0].endswith('.sh'):
+        cmd = ['bash'] + args
+    else:
+        print("Invalid command. Only pytest, .py, and .sh are supported.")
+        sys.exit(1)
+
+    subprocess.run(cmd)
 
 if __name__ == '__main__':
     fanot = fan.Fanotify(init_fid=True)
+    
+    #setting the wacthed path to the current directory. 
     path = os.path.abspath('.')
-    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_MOVED_FROM | fan.FAN_ONDIR | fan.FAN_MODIFY, is_type='fs')
+    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_DELETE | fan.FAN_ONDIR , is_type='fs')
     fanot.start()
 
     cli = fan.FanotifyClient(fanot, path_pattern=path+'/*')
@@ -30,26 +50,17 @@ if __name__ == '__main__':
     t.start()
 
     try:
-        # Run the Python script specified as an argument
-        
+        # Run the command specified as arguments
         if len(sys.argv) < 2:
-            print("Usage: python3 <script_name.py> [script.py | script.sh]")
+            print("Usage: python3 <script_name.py> [pytest [-k TEST_NAME] [test_file.py] | script.py | script.sh]")
             sys.exit(1)
 
-        script_path = sys.argv[1]
-        if script_path.endswith('.py'):
-            subprocess.run(['python3', script_path])
-        elif script_path.endswith('.sh'):
-            subprocess.run(['bash', script_path])
-        else:
-            print("Invalid script file. Only .py and .sh files are supported.")
-            sys.exit(1)
-        
-        # script_path = sys.argv[1]
-        # subprocess.run(['python3', script_path])
+        command_args = sys.argv[1:]
+        run_command(command_args)
 
     except KeyboardInterrupt:
         pass
 
     cli.close()
     fanot.stop()
+

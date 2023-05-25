@@ -30,7 +30,7 @@ def run_command(args):
 if __name__ == '__main__':
     fanot = fan.Fanotify(init_fid=True)
     path = os.path.abspath('.')
-    fanot.mark(path, ev_types=fan.FAN_CREATE | fan.FAN_MOVED_FROM | fan.FAN_ONDIR | fan.FAN_MODIFY, is_type='fs')
+    fanot.mark(path, ev_types=fan.FAN_DELETE | fan.FAN_CREATE | fan.FAN_ONDIR , is_type='fs')
     fanot.start()
 
     cli = fan.FanotifyClient(fanot, path_pattern=path+'/*')
