@@ -2,6 +2,7 @@
 import importlib
 import os
 import unittest
+import time
 
 from multiprocessing import Pipe
 from random import shuffle
@@ -641,7 +642,7 @@ class MeowTests(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(start_dir, "A.txt")))
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 1)
         self.assertTrue(os.path.exists(job_dir))
-
+        time.sleep(100)
         runner.stop()
 
         metafile = os.path.join(job_dir, META_FILE)
@@ -755,7 +756,6 @@ class MeowTests(unittest.TestCase):
                 job_ids.append(msg.replace(TEST_JOB_QUEUE+os.path.sep, ''))
 
             loops += 1
-
         runner.stop()
 
         self.assertEqual(len(job_ids), 2)

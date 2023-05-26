@@ -19,7 +19,7 @@ from typing import Any, Tuple, Dict, Union
 from meow_base.core.meow import valid_job
 from meow_base.core.vars import VALID_CONDUCTOR_NAME_CHARS, VALID_CHANNELS, \
     JOB_STATUS, JOB_START_TIME, META_FILE, STATUS_RUNNING, STATUS_DONE , \
-    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, CREATED_FILES, \
+    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, CREATED_FILES,  \
     get_drt_imp_msg
 from meow_base.functionality.file_io import write_file, \
     threadsafe_read_status, threadsafe_update_status
@@ -177,55 +177,38 @@ class BaseConductor:
         if not abort:
             try:
                 result = subprocess.call(
-                    f'strace -o {os.path.join(job_dir, job["id"])}.log --trace=open,openat --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
-                    cwd=".", 
+                    f'python3 {os.path.join( os.path.dirname(__file__), "multiThreadedFaN.py")} {os.path.join(job_dir, job["tmp script command"])} > {os.path.join(job_dir, job["id"])}.trace ', 
+                    cwd=".",
                     shell = True
                 )
                 
                 if result == 0:
                     #Find the created files from the log file: 
-                    log_file = os.path.join(job_dir, f'{job["id"]}.log')
+                    log_file = os.path.join(job_dir, f'{job["id"]}.trace')
 
                     #Checking if the log file was created: 
                     if not os.path.exists(log_file):
                         threadsafe_update_status(
-                            {JOB_ERROR: "Log file was not created. Tracing output files was not possible"
+                            {JOB_ERROR: "Trace file was not created. Tracing output files was not possible"
                             }
                         )
-                    
+                    #Make a new line each time a new event was created (needed for parsing)
+    
+
                     # Read the log file and extract unique string: 
                     unique_filenames = set()
                     with open(log_file, 'r') as file: 
                         for line in file: 
-                            if job['id']  in line:
-                                start_index = line.index('/') + 1
-                                end_index = line.index('"', start_index)
-                                filename = line[start_index:end_index]
-                                unique_filenames.add(os.path.basename(filename))
-                            #If there is no path to some weird kernel stuff and the job id is not in the path, then it is probably also
-                            # a file name that we are interested in. Probably need to parse this stuff better. Parsing seems a bad solution.     
-                            if '/' not in line: 
-                                match = re.search(r'"([^"]+)"', line)
-                                if match:
-                                    filename = match.group(1)
-                                    unique_filenames.add(filename)
-
-                    #if it takes the job_id name itself with no extensions its taking a directory that was created for its job. If we want this information uncomment the below: 
-                    key = job['id']
-                    items_to_remove = []
-                    for filename in unique_filenames:
-                        if key in filename:
-                            parts = filename.split('.')
-                            if len(parts)==1:
-                                items_to_remove.append(key)
-                    for item in items_to_remove:
-                        unique_filenames.discard(item)
-
+                            # Finding all created files and directories. If we parsed better we could probably get the path as well. 
+                            matches = re.findall(r"/([^/']+)'", line)  
+                            for match in matches:
+                                    unique_filenames.add(match)
+                            
 
                             
 
                     #delete file because we are done with it: 
-                    os.remove(f"{os.path.join(job_dir, job['id'])}.log")
+                    os.remove(f"{os.path.join(job_dir, job['id'])}.trace")
                     
                     # Update the status file with the finalised status and created files
                     threadsafe_update_status(

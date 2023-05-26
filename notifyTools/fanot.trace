@@ -1,0 +1,24 @@
+2023-05-25 14:44:36.358249 DEBUG: Fanotify: start
+2023-05-25 14:44:36.398516 DEBUG: Fanotify: finish
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir1': [74954, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir1': [74954, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir3': [74955, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file1': [74954, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir3': [74955, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file3': [74955, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy1': [74954, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy3': [74955, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir2': [74954, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir4': [74955, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir2': [74954, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir4': [74955, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file2': [74954, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file4': [74955, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy2': [74954, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy4': [74955, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir5': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir5': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir7': [74955, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file5': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir7': [74955, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy5': [74954, 'create'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file7': [74955, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy7': [74955, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir6': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir6': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file6': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir8': [74955, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy6': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir8': [74955, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file8': [74955, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy8': [74955, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir9': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir9': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file9': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy9': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/dir10': [74954, 'create|ondir']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/copydir10': [74954, 'create|ondir'], b'/home/ibli/Documents/GitHub/meowBa/notifyTools/file10': [74954, 'create']}
+{b'/home/ibli/Documents/GitHub/meowBa/notifyTools/filecopy10': [74954, 'create']}

@@ -172,24 +172,25 @@ class BaseConductor:
             error_file = os.path.join(job_dir, BACKUP_JOB_ERROR_FILE)
             write_file(f"Recieved incorrectly setup job.\n\n{e}", error_file)
             abort = True
+
 ################## TRACING #######################################################
         # execute the job
         if not abort:
             try:
                 result = subprocess.call(
-                    f'strace -o {os.path.join(job_dir, job["id"])}.log --trace=open,openat --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
+                    f'strace -o {os.path.join(job_dir, job["id"])}.trace --trace=open,openat,mkdir --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
                     cwd=".", 
                     shell = True
                 )
                 
                 if result == 0:
                     #Find the created files from the log file: 
-                    log_file = os.path.join(job_dir, f'{job["id"]}.log')
+                    log_file = os.path.join(job_dir, f'{job["id"]}.trace')
 
                     #Checking if the log file was created: 
                     if not os.path.exists(log_file):
                         threadsafe_update_status(
-                            {JOB_ERROR: "Log file was not created. Tracing output files was not possible"
+                            {JOB_ERROR: "Trace file was not created. Tracing output files was not possible"
                             }
                         )
                     
@@ -197,35 +198,18 @@ class BaseConductor:
                     unique_filenames = set()
                     with open(log_file, 'r') as file: 
                         for line in file: 
-                            if job['id']  in line:
-                                start_index = line.index('/') + 1
-                                end_index = line.index('"', start_index)
-                                filename = line[start_index:end_index]
-                                unique_filenames.add(os.path.basename(filename))
-                            #If there is no path to some weird kernel stuff and the job id is not in the path, then it is probably also
-                            # a file name that we are interested in. Probably need to parse this stuff better. Parsing seems a bad solution.     
-                            if '/' not in line: 
-                                match = re.search(r'"([^"]+)"', line)
-                                if match:
-                                    filename = match.group(1)
-                                    unique_filenames.add(filename)
-
-                    #if it takes the job_id name itself with no extensions its taking a directory that was created for its job. If we want this information uncomment the below: 
-                    key = job['id']
-                    items_to_remove = []
-                    for filename in unique_filenames:
-                        if key in filename:
-                            parts = filename.split('.')
-                            if len(parts)==1:
-                                items_to_remove.append(key)
-                    for item in items_to_remove:
-                        unique_filenames.discard(item)
-
-
+                            if 'O_CREAT' in line or 'mkdir' in line:
+                                try:
+                                    start_index = line.index('"') + 1
+                                    end_index = line.index('"', start_index)
+                                    filename = line[start_index:end_index]
+                                    unique_filenames.add(os.path.basename(filename))
+                                except ValueError:
+                                    pass
                             
 
                     #delete file because we are done with it: 
-                    os.remove(f"{os.path.join(job_dir, job['id'])}.log")
+                    os.remove(f"{os.path.join(job_dir, job['id'])}.trace")
                     
                     # Update the status file with the finalised status and created files
                     threadsafe_update_status(
