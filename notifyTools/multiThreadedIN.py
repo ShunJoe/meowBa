@@ -20,13 +20,17 @@ def run_command(args):
         print("Invalid command. Only pytest, .py, and .sh are supported.")
         sys.exit(1)
 
+    if '>' in args:
+        index = args.index('>')
+        cmd = cmd[:index]
+
     subprocess.run(cmd)
 
 if __name__ == '__main__':
     i = inotify.adapters.Inotify()
 
     path = os.path.abspath('.')
-    i.add_watch(path, mask=inotify.constants.IN_CREATE | inotify.constants.IN_MOVED_FROM | inotify.constants.IN_ISDIR | inotify.constants.IN_MODIFY)
+    i.add_watch(path, mask=inotify.constants.IN_CREATE | inotify.constants.IN_MOVED_FROM | inotify.constants.IN_ISDIR | inotify.constants.IN_MODIFY | inotify.constants.IN_DELETE)
 
     # Start the event processing thread
     t = threading.Thread(target=process_events, args=(i,))
@@ -36,7 +40,7 @@ if __name__ == '__main__':
     try:
         # Run the command specified as arguments
         if len(sys.argv) < 2:
-            print("Usage: python3 <script_name.py> [pytest [-k TEST_NAME] [test_file.py] | script.py | script.sh]")
+            print("Usage: python3 <script_name.py> [pytest [-k TEST_NAME] [test_file.py] | script.py | script.sh] ")
             sys.exit(1)
 
         command_args = sys.argv[1:]
@@ -46,3 +50,4 @@ if __name__ == '__main__':
         pass
 
     i.remove_watch(path)
+Gello
