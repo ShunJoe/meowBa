@@ -145,7 +145,7 @@ class TracerTest(unittest.TestCase):
         self.assertIsInstance(created_files_list, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test = ['recipe.py', 'job.sh', 'output.log', 'job.yml']
+        created_files_test = ['output', 'A.txt', 'output.log']
         self.assertCountEqual(created_files_list, created_files_test)
         
 
@@ -157,11 +157,11 @@ class TracerTest(unittest.TestCase):
             "infile", 
             parameters={
                 "num":250,
-                "outfile":os.path.join("{BASE}", "middle", "{FILENAME}")
+                "outfile":os.path.join("{BASE}", "final", "{FILENAME}")
             })
         pattern_two = FileEventPattern(
             "pattern_two", 
-            os.path.join("middle", "A.txt"), 
+            os.path.join("final", "A.txt"), 
             "recipe_one", 
             "infile", 
             parameters={
@@ -259,41 +259,42 @@ class TracerTest(unittest.TestCase):
         status1 = read_yaml(meta1)
         create1 = status1[JOB_CREATE_TIME]
         if create0 < create1:
-            mid_job_id = job_ids[0]
+            start_job_id = job_ids[0]
             final_job_id = job_ids[1]
         else:
-            mid_job_id = job_ids[1]
+            start_job_id = job_ids[1]
             final_job_id = job_ids[0]
 
-        mid_job_dir = os.path.join(TEST_JOB_OUTPUT, mid_job_id)
+        start_job_dir = os.path.join(TEST_JOB_OUTPUT, start_job_id)
 
         #This also checks that the strace output file was succesfully removed when the runner stops. 
-        self.assertEqual(count_non_locks(mid_job_dir), 4)
+        self.assertEqual(count_non_locks(start_job_dir), 4)
 
         #Checking the .yaml metafile exists and that no error occured
-        mid_metafile = os.path.join(mid_job_dir, META_FILE)
-        mid_status = read_yaml(mid_metafile)
-        self.assertNotIn(JOB_ERROR, mid_status)
+        start_metafile = os.path.join(start_job_dir, META_FILE)
+        start_status = read_yaml(start_metafile)
+        self.assertNotIn(JOB_ERROR, start_status)
 
         #Checking that the YAML object CREATED_FILES from vars.py is a list
-        created_files_list0 = mid_status[CREATED_FILES]
+        created_files_list0 = start_status[CREATED_FILES]
         self.assertIsInstance(created_files_list0, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test = ['recipe.py', 'job.sh', 'output.log', 'job.yml']
-        self.assertCountEqual(created_files_list0, created_files_test)
+        #This job should create an output.log file and then create a directory 'final' in which it puts 'A.txt'
+        created_files_start = ['final', 'A.txt', 'output.log']
+        self.assertCountEqual(created_files_list0, created_files_start)
 
-        mid_result_path = os.path.join(
-            mid_job_dir, "output.log")
-        self.assertTrue(os.path.exists(mid_result_path))
-        mid_result = read_file(os.path.join(mid_result_path))
+        start_result_path = os.path.join(
+            start_job_dir, "output.log")
+        self.assertTrue(os.path.exists(start_result_path))
+        start_result = read_file(os.path.join(start_result_path))
         self.assertEqual(
-            mid_result, "7806.25\ndone\n")
+            start_result, "7806.25\ndone\n")
 
-        mid_output_path = os.path.join(TEST_MONITOR_BASE, "middle", "A.txt")
-        self.assertTrue(os.path.exists(mid_output_path))
-        mid_output = read_file(os.path.join(mid_output_path))
-        self.assertEqual(mid_output, "7806.25")
+        start_output_path = os.path.join(TEST_MONITOR_BASE, "final", "A.txt")
+        self.assertTrue(os.path.exists(start_output_path))
+        start_output = read_file(os.path.join(start_output_path))
+        self.assertEqual(start_output, "7806.25")
 
         final_job_dir = os.path.join(TEST_JOB_OUTPUT, final_job_id)
         self.assertEqual(count_non_locks(final_job_dir), 4)
@@ -307,7 +308,9 @@ class TracerTest(unittest.TestCase):
         self.assertIsInstance(created_files_list1, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        self.assertCountEqual(created_files_list1, created_files_test)
+        #This creates a directory 'output' in which it places 'A.txt'. 
+        created_files_final = ['output', 'output.log', 'A.txt']
+        self.assertCountEqual(created_files_list1, created_files_final)
 
         final_result_path = os.path.join(final_job_dir, "output.log")
         self.assertTrue(os.path.exists(final_result_path))
@@ -456,24 +459,24 @@ class TracerTest(unittest.TestCase):
         self.assertIsInstance(created_files_list0, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test_4_outputs = ['recipe.py', 'job.sh', 'output.log', 'job.yml']
-        self.assertCountEqual(created_files_list0, created_files_test_4_outputs)
+        created_files_test_first_job = ['output.log', 'middle', 'A.txt']
+        self.assertCountEqual(created_files_list0, created_files_test_first_job)
 
         
 
-        job_with_8_output_files_dir = os.path.join(TEST_JOB_OUTPUT, job_with_8_output_files_id)
+        job_with_4_files_dir = os.path.join(TEST_JOB_OUTPUT, job_with_8_output_files_id)
 
-        job_with_8_output_files_metafile = os.path.join(job_with_8_output_files_dir, META_FILE)
-        job_with_8_output_files_status = read_yaml(job_with_8_output_files_metafile)
-        self.assertNotIn(JOB_ERROR, job_with_8_output_files_status)
+        job_with_4_files_metafile = os.path.join(job_with_4_files_dir, META_FILE)
+        job_with_4_files_status = read_yaml(job_with_4_files_metafile)
+        self.assertNotIn(JOB_ERROR, job_with_4_files_status)
 
         #Checking that the YAML object CREATED_FILES from vars.py is a list
-        created_files_list1 = job_with_8_output_files_status[CREATED_FILES]
+        created_files_list1 = job_with_4_files_status[CREATED_FILES]
         self.assertIsInstance(created_files_list1, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test_8_outputs = ['recipe.py', 'job.sh', 'output.log', 'job.yml', 'file1', 'file2', 'file3', 'file4']
-        self.assertCountEqual(created_files_list1, created_files_test_8_outputs)
+        job_with_4_files_outputs = ['output.log','file1.txt', 'file2.txt', 'file3.txt', 'file4.txt']
+        self.assertCountEqual(created_files_list1, job_with_4_files_outputs)
 
     def testTracerMultiThreadedFileCreationPythonExecution(self)->None:
         pattern_one = FileEventPattern(
@@ -611,7 +614,7 @@ class TracerTest(unittest.TestCase):
         self.assertIsInstance(created_files_list0, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test_4_outputs = ['recipe.py', 'job.sh', 'output.log', 'job.yml']
+        created_files_test_4_outputs = ['A.txt', 'output.log', 'middle']
         self.assertCountEqual(created_files_list0, created_files_test_4_outputs)
 
         
@@ -627,7 +630,5 @@ class TracerTest(unittest.TestCase):
         self.assertIsInstance(created_files_list1, list)
 
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
-        created_files_test_8_outputs = ['recipe.py', 'job.sh', 'output.log', 'job.yml', 'file1', 'file2', 'file3', 'file4']
+        created_files_test_8_outputs = ['output.log', 'file1.txt', 'file2.txt', 'file3.txt', 'file4.txt']
         self.assertCountEqual(created_files_list1, created_files_test_8_outputs)
-
-    

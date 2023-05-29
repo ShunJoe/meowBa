@@ -1,0 +1,9 @@
+
+*.lock
+*.ipynb
+*.yml
+*.sh
+*.npy
+*.png
+*.txt
+*.pyc
