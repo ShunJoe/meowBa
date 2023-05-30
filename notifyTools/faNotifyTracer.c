@@ -9,6 +9,7 @@
 #include <sys/fanotify.h>
 #include <unistd.h>
 #include <pthread.h>
+#include<string.h>
 #define BUF_SIZE 256
 
 volatile int startBash = 0; 
@@ -41,7 +42,7 @@ void* fanotifyProcessing(void* argv1) {
     }
     /* Place a mark on the filesystem object supplied in argv[1]. */
     ret = fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_ONLYDIR,
-                        FAN_CREATE | FAN_ONDIR,
+                        FAN_CREATE | FAN_DELETE| FAN_ONDIR ,
                         AT_FDCWD, argv11);
     if (ret == -1) {
         perror("fanotify_mark");
@@ -53,18 +54,9 @@ void* fanotifyProcessing(void* argv1) {
         startBash = 1;
          /* Read events from the event queue into a buffer. */
         len = read(fd, events_buf, sizeof(events_buf));
-        if (len == -1) {
-            if (errno == EAGAIN) {
-            /* No data available to read */
-                if (bashDone == 1) {
-                    printf("Nothing to read\n");
-                    break;
-                }
-            }
-            else {
+        if (len == -1 && errno != EAGAIN) {
             perror("read");
             exit(EXIT_FAILURE);
-            }
         }
         /* Process all events within the buffer. */
         for (metadata = (struct fanotify_event_metadata *) events_buf;
@@ -80,14 +72,20 @@ void* fanotifyProcessing(void* argv1) {
                 file_name = file_handle->f_handle +
                             file_handle->handle_bytes;
             } else {
-                fprintf(stderr, "Received unexpected event info type.\n");
+                fprintf(stderr, "Received unexpected event info type. ");
                 exit(EXIT_FAILURE);
             }
             if (metadata->mask == FAN_CREATE) {
-                printf("FAN_CREATE (file created):\n");
+                printf("FAN_CREATE (file created): ");
             }
             if (metadata->mask == (FAN_CREATE | FAN_ONDIR)) {
-                printf("FAN_CREATE | FAN_ONDIR (subdirectory created):\n");
+                printf("FAN_CREATE | FAN_ONDIR (subdirectory created): ");
+            }
+            if (metadata->mask == FAN_DELETE) {
+                printf("FAN_DELETE (file deleted): ");
+            }
+            if (metadata->mask == (FAN_DELETE | FAN_ONDIR)) {
+                printf("FAN_DELETE | FAN_ONDIR (subdirectory deleted) ");
             }
         /* metadata->fd is set to FAN_NOFD when the group identifies
             objects by file handles.  To obtain a file descriptor for
@@ -110,14 +108,14 @@ void* fanotifyProcessing(void* argv1) {
             }
             snprintf(procfd_path, sizeof(procfd_path), "/proc/self/fd/%d",
                     event_fd);
-            /* Retrieve and print the path of the modified dentry. */
+            /* Retrieve and print the path of the modified entry. */
             path_len = readlink(procfd_path, path, sizeof(path) - 1);
             if (path_len == -1) {
                 perror("readlink");
                 exit(EXIT_FAILURE);
             }
             path[path_len] = '\0';
-            printf("\tDirectory '%s' has been modified.\n", path);
+            printf("\tDirectory '%s' has been modified.", path);
             if (file_name) {
                 ret = fstatat(event_fd, file_name, &sb, 0);
                 if (ret == -1) {
@@ -125,17 +123,18 @@ void* fanotifyProcessing(void* argv1) {
                         perror("fstatat");
                         exit(EXIT_FAILURE);
                     }
-                    printf("\tEntry '%s' does not exist.\n", file_name);
+                    printf("\tEntry '%s' does not exist.", file_name);
                 } else if ((sb.st_mode & S_IFMT) == S_IFDIR) {
-                    printf("\tEntry '%s' is a subdirectory.\n", file_name);
+                    printf("\tEntry '%s' is a subdirectory.", file_name);
                 } else {
-                    printf("\tEntry '%s' is not a subdirectory.\n",
+                    printf("\tEntry '%s' is not a subdirectory.",
                             file_name);
                 }
                 
             }
+            printf("\n");
             close(metadata->fd);
-            metadata = FAN_EVENT_NEXT(metadata, len); 
+            close((int)event_fd);
         }
     }
     printf("All events processed successfully. Fanotify process exiting.\n");
@@ -160,20 +159,50 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
    
-    /* Execute bash script when process event is ready */  
+    /* Execute script when process event thread is ready */  
     while (startBash == 0) {
         sleep(1);
     }
-    int exitStatus = system(argv[2]);
+    const char* scriptPath = argv[2];
+    const char* scriptType;
 
-    // Check the return value of the system() function
+    // Extract the file extension from the script path
+    const char* extension = strrchr(scriptPath, '.');
+    if (extension != NULL) {
+        // Skip the dot character
+        extension++;
+        
+        if (strcmp(extension, "sh") == 0) {
+            scriptType = "bash";
+        } else if (strcmp(extension, "py") == 0) {
+            scriptType = "python";
+        } else {
+            printf("Unsupported script type.\n");
+            return EXIT_FAILURE;
+        }
+    } else {
+        printf("Invalid script path.\n");
+        return EXIT_FAILURE;
+    }
+
+    int exitStatus;
+
+    if (strcmp(scriptType, "bash") == 0) {
+        exitStatus = system(scriptPath);
+    } else if (strcmp(scriptType, "python") == 0) {
+        char command[256];
+        snprintf(command, sizeof(command), "python3 %s", scriptPath);
+        exitStatus = system(command);
+    } else {
+        printf("Invalid script type.\n");
+        return EXIT_FAILURE;
+    }
+
     if (exitStatus == -1) {
-        printf("Failed to execute the bash script.\n");
-         exit(EXIT_SUCCESS);
-
-    } 
-    bashDone = 1;
-    sleep(1);
+        printf("Failed to execute the script.\n");
+        return EXIT_FAILURE;
+    }
+    sleep(5);
     printf("Terminating program \n");
     exit(EXIT_SUCCESS);
 }
