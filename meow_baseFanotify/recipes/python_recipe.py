@@ -15,12 +15,12 @@ from meow_base.core.base_recipe import BaseRecipe
 from meow_base.core.base_handler import BaseHandler
 from meow_base.core.meow import valid_event
 from meow_base.functionality.validation import check_script, valid_string, \
-    valid_dict, valid_dir_path
+    valid_dict
 from meow_base.core.vars import VALID_VARIABLE_NAME_CHARS, \
     DEBUG_INFO, DEFAULT_JOB_QUEUE_DIR, EVENT_RULE, \
     JOB_TYPE_PYTHON, EVENT_TYPE, EVENT_RULE
 from meow_base.functionality.debug import setup_debugging, print_debug
-from meow_base.functionality.file_io import make_dir, write_file, \
+from meow_base.functionality.file_io import write_file, \
     lines_to_string
 from meow_base.functionality.parameterisation import parameterize_python_script
 from meow_base.patterns.file_event_pattern import EVENT_TYPE_WATCHDOG
@@ -64,19 +64,11 @@ class PythonHandler(BaseHandler):
         handle execution, but is invoked according to a factory pattern using 
         the handle function. Note that if this handler is given to a MeowRunner
         object, the job_queue_dir will be overwridden by its"""
-        super().__init__(name=name, pause_time=pause_time)
-        self._is_valid_job_queue_dir(job_queue_dir)
-        self.job_queue_dir = job_queue_dir
+        super().__init__(name=name, job_queue_dir=job_queue_dir,
+            pause_time=pause_time)
         self._print_target, self.debug_level = setup_debugging(print, logging)
         print_debug(self._print_target, self.debug_level, 
             "Created new PythonHandler instance", DEBUG_INFO)
-
-    def _is_valid_job_queue_dir(self, job_queue_dir)->None:
-        """Validation check for 'job_queue_dir' variable from main 
-        constructor."""
-        valid_dir_path(job_queue_dir, must_exist=False)
-        if not os.path.exists(job_queue_dir):
-            make_dir(job_queue_dir)
 
     def valid_handle_criteria(self, event:Dict[str,Any])->Tuple[bool,str]:
         """Function to determine given an event defintion, if this handler can 
@@ -110,5 +102,5 @@ class PythonHandler(BaseHandler):
         write_file(lines_to_string(base_script), base_file)
         os.chmod(base_file, stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH )
 
-        return f"python3 {base_file} >>{os.path.join(job_dir, 'output.log')} 2>&1"
+        return f"python3 {base_file}"
 

@@ -8,10 +8,11 @@ Author(s): David Marchant
 
 import itertools
 
+from copy import deepcopy
 from typing import Any, Union, Tuple, Dict, List
 
 from meow_base.core.vars import VALID_PATTERN_NAME_CHARS, \
-    SWEEP_JUMP, SWEEP_START, SWEEP_STOP, get_drt_imp_msg
+    SWEEP_JUMP, SWEEP_START, SWEEP_STOP, NOTIFICATION_KEYS, get_drt_imp_msg
 from meow_base.functionality.validation import valid_string, check_type, \
     check_implementation, valid_dict
 
@@ -27,9 +28,13 @@ class BasePattern:
     outputs:Dict[str,Any]
     # A collection of variables to be swept over for job scheduling
     sweep:Dict[str,Any]
+    # A collection of various notification settings, to alert users on 
+    # completion of any job from this pattern
+    notifications:Dict[str,str]
     # TODO Add requirements to patterns
     def __init__(self, name:str, recipe:str, parameters:Dict[str,Any]={}, 
-            outputs:Dict[str,Any]={}, sweep:Dict[str,Any]={}):
+            outputs:Dict[str,Any]={}, sweep:Dict[str,Any]={}, 
+            notifications:Dict[str,Any]={}):
         """BasePattern Constructor. This will check that any class inheriting 
         from it implements its validation functions. It will then call these on
         the input parameters."""
@@ -46,6 +51,8 @@ class BasePattern:
         self.outputs = outputs
         self._is_valid_sweep(sweep)
         self.sweep = sweep
+        self._is_valid_notifications(notifications)
+        self.notifications = notifications
 
     def __new__(cls, *args, **kwargs):
         """A check that this base class is not instantiated itself, only 
@@ -129,6 +136,42 @@ class BasePattern:
                         "value where the end point is smaller than the start."
                     )
 
+    def _is_valid_notifications(self, notifications:Dict[str,Any])->None:
+        valid_dict(
+            notifications, 
+            str,
+            Any, 
+            optional_keys=NOTIFICATION_KEYS, 
+            min_length=0,
+            strict=True
+        )
+
+    def assemble_params_dict(self, event:Dict[str,Any]
+            )->Union[Dict[str,Any],List[Dict[str,Any]]]:
+        """Function to assemble a dictionary of job parameters from this 
+        pattern. If no parameter sweeps, then this will be a single dictionary 
+        of parameters, otherwise it will be a list of unique dictionaries for 
+        every combination of sweeps. This method should be extended by any 
+        inheriting pattern classes."""
+        yaml_dict = {}
+
+        for var, val in self.parameters.items():
+            yaml_dict[var] = val
+        for var, val in self.outputs.items():
+            yaml_dict[var] = val
+
+        if not self.sweep:
+            return yaml_dict
+
+        yaml_dict_list = []
+        values_list = self.expand_sweeps()
+        for values in values_list:
+            for value in values:
+                yaml_dict[value[0]] = value[1]
+            yaml_dict_list.append(deepcopy(yaml_dict))
+
+        return yaml_dict_list
+
     def expand_sweeps(self)->List[Tuple[str,Any]]:
         """Function to get all combinations of sweep parameters"""
         values_dict = {}
@@ -143,3 +186,7 @@ class BasePattern:
         # combine all combinations of sweep values
         return list(itertools.product(
             *[v for v in values_dict.values()]))
+
+    def get_additional_replacement_keywords(self
+            )->Tuple[Dict[str,str],List[str]]:
+        return ({}, [])
