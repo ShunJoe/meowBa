@@ -11,9 +11,9 @@ from warnings import warn
 from meow_base.core.base_conductor import BaseConductor
 from meow_base.core.base_handler import BaseHandler
 from meow_base.core.base_monitor import BaseMonitor
-from meow_base.conductors import LocalPythonConductor
+from meow_base.conductors import LocalPythonConductor, LocalBashConductor
 from meow_base.core.vars import JOB_TYPE_PAPERMILL, JOB_ERROR, \
-    META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME, CREATED_FILES, JOB_RECIPE
+    META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME, CREATED_FILES, JOB_RECIPE, JOB_TYPE_BASH
 from meow_base.core.runner import MeowRunner
 from meow_base.functionality.file_io import make_dir, read_file, \
     read_notebook, read_yaml, write_file, lines_to_string
@@ -24,12 +24,13 @@ from meow_base.patterns.file_event_pattern import WatchdogMonitor, \
 from meow_base.recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
 from meow_base.recipes.python_recipe import PythonHandler, PythonRecipe
+from meow_base.recipes.bash_recipe import BashHandler, BashRecipe
 from meow_base.tests.shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
     MAKER_RECIPE, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, \
     FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, \
     GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_PYTHON_SCRIPT, \
     TEST_DATA, GENERATE_PYTHON_SCRIPT, BAREBONES_PYTHON_SCRIPT, MAKE_4FILES_PYTHON_SCRIPT,\
-    MAKE_4FILES_PYTHON_MULTITHREADED_SCRIPT, \
+    MAKE_4FILES_PYTHON_MULTITHREADED_SCRIPT, BAREBONES_BASH_SCRIPT, COMPLETE_BASH_SCRIPT\
     setup, teardown, backup_before_teardown, count_non_locks
 
 
@@ -147,8 +148,7 @@ class TracerTest(unittest.TestCase):
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
         created_files_test = ['output', 'A.txt', 'output.log']
         self.assertCountEqual(created_files_list, created_files_test)
-        
-
+       
     def testTracerLinkedPythonExecution(self)->None:
         pattern_one = FileEventPattern(
             "pattern_one", 
@@ -632,3 +632,109 @@ class TracerTest(unittest.TestCase):
         #Checking that the list contains the expected files. Order of the files in the lists is not important:  
         created_files_test_8_outputs = ['output.log', 'file1.txt', 'file2.txt', 'file3.txt', 'file4.txt']
         self.assertCountEqual(created_files_list1, created_files_test_8_outputs)
+
+            #setup the MEOW runner for python execution: 
+    def testTracerBashExecution(self)->None:
+        pattern_one = FileEventPattern(
+            "pattern_one", os.path.join("start", "A.txt"), "recipe_one", "infile", 
+            parameters={
+                "num":10000,
+                "outfile":os.path.join("{BASE}", "output", "{FILENAME}")
+            })
+        recipe = BashRecipe(
+            "recipe_one", COMPLETE_BASH_SCRIPT
+        )
+
+        patterns = {
+            pattern_one.name: pattern_one,
+        }
+        recipes = {
+            recipe.name: recipe,
+        }
+
+        runner = MeowRunner(
+            WatchdogMonitor(
+                TEST_MONITOR_BASE,
+                patterns,
+                recipes,
+                settletime=1
+            ), 
+            BashHandler(
+                job_queue_dir=TEST_JOB_QUEUE
+            ),
+            LocalBashConductor(pause_time=2),
+            job_queue_dir=TEST_JOB_QUEUE,
+            job_output_dir=TEST_JOB_OUTPUT
+        )
+
+        # Intercept messages between the conductor and runner for testing
+        conductor_to_test_conductor, conductor_to_test_test = Pipe(duplex=True)
+        test_to_runner_runner, test_to_runner_test = Pipe(duplex=True)
+
+        runner.conductors[0].to_runner_job = conductor_to_test_conductor
+
+        for i in range(len(runner.job_connections)):
+            _, obj = runner.job_connections[i]
+
+            if obj == runner.conductors[0]:
+                runner.job_connections[i] = (test_to_runner_runner, runner.job_connections[i][1])
+      
+   
+        runner.start()
+
+        start_dir = os.path.join(TEST_MONITOR_BASE, "start")
+        make_dir(start_dir)
+        self.assertTrue(start_dir)
+        with open(os.path.join(start_dir, "A.txt"), "w") as f:
+            f.write("25000")
+
+        self.assertTrue(os.path.exists(os.path.join(start_dir, "A.txt")))
+
+        loops = 0
+        while loops < 5:
+            # Initial prompt
+            if conductor_to_test_test.poll(5):
+                msg = conductor_to_test_test.recv()
+            else:
+                raise Exception("Timed out")        
+            self.assertEqual(msg, 1)
+            test_to_runner_test.send(msg)
+
+            # Reply
+            if test_to_runner_test.poll(5):
+                msg = test_to_runner_test.recv()
+            else:
+                raise Exception("Timed out")        
+            job_dir = msg
+            conductor_to_test_test.send(msg)
+
+            if isinstance(job_dir, str):
+                # Prompt again once complete
+                if conductor_to_test_test.poll(5):
+                    msg = conductor_to_test_test.recv()
+                else:
+                    raise Exception("Timed out")        
+                self.assertEqual(msg, 1)
+                loops = 5
+
+            loops += 1
+
+        job_dir = job_dir.replace(TEST_JOB_QUEUE, TEST_JOB_OUTPUT)
+
+        self.assertTrue(os.path.exists(os.path.join(start_dir, "A.txt")))
+        self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 1)
+        self.assertTrue(os.path.exists(job_dir))
+        runner.stop()
+
+        #Checking the .yaml metafile exists and that no error occured
+        metafile = os.path.join(job_dir, META_FILE)
+        status = read_yaml(metafile)
+        self.assertNotIn(JOB_ERROR, status)
+
+        #Checking that the YAML object CREATED_FILES from vars.py is a list
+        created_files_list = status[CREATED_FILES]
+        self.assertIsInstance(created_files_list, list)
+
+        #Checking that the list contains the expected files. Order of the files in the lists is not important:  
+        created_files_test = ['output', 'A.txt', 'output.log']
+        self.assertCountEqual(created_files_list, created_files_test)
