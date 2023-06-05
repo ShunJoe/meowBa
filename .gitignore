@@ -1,8 +1,1 @@
 
-*.lock
-*.ipynb
-*.yml
-*.npy
-*.png
-*.txt
-*.pyc
