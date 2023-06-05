@@ -9,12 +9,12 @@ from meow_base.core.base_handler import BaseHandler
 from meow_base.core.base_recipe import BaseRecipe
 from meow_base.core.meow import valid_event
 from meow_base.functionality.validation import check_type, valid_dict, \
-    valid_string
+    valid_string, valid_dir_path
 from meow_base.core.vars import DEBUG_INFO, DEFAULT_JOB_QUEUE_DIR, \
     VALID_VARIABLE_NAME_CHARS, EVENT_RULE, EVENT_TYPE, \
     JOB_TYPE_BASH
 from meow_base.functionality.debug import setup_debugging, print_debug
-from meow_base.functionality.file_io import valid_path, write_file, \
+from meow_base.functionality.file_io import valid_path, make_dir, write_file, \
     lines_to_string
 from meow_base.functionality.parameterisation import parameterize_bash_script
 from meow_base.patterns.file_event_pattern import EVENT_TYPE_WATCHDOG
@@ -68,8 +68,9 @@ class BashHandler(BaseHandler):
         handle execution, but is invoked according to a factory pattern using 
         the handle function. Note that if this handler is given to a MeowRunner
         object, the job_queue_dir will be overwridden by its"""
-        super().__init__(name=name, job_queue_dir=job_queue_dir, 
-                pause_time=pause_time)
+        super().__init__(name=name, pause_time=pause_time)
+        self._is_valid_job_queue_dir(job_queue_dir)
+        self.job_queue_dir = job_queue_dir
         self._print_target, self.debug_level = setup_debugging(print, logging)
         print_debug(self._print_target, self.debug_level, 
             "Created new BashHandler instance", DEBUG_INFO)
@@ -92,6 +93,13 @@ class BashHandler(BaseHandler):
         except Exception as e:
             return False, str(e)
 
+    def _is_valid_job_queue_dir(self, job_queue_dir)->None:
+        """Validation check for 'job_queue_dir' variable from main 
+        constructor."""
+        valid_dir_path(job_queue_dir, must_exist=False)
+        if not os.path.exists(job_queue_dir):
+            make_dir(job_queue_dir)
+
     def get_created_job_type(self)->str:
         return JOB_TYPE_BASH
     
@@ -101,7 +109,6 @@ class BashHandler(BaseHandler):
         base_script = parameterize_bash_script(
             event[EVENT_RULE].recipe.recipe, params_dict
         )
-
         base_file = os.path.join(job_dir, "recipe.sh")
         write_file(lines_to_string(base_script), base_file)
         os.chmod(base_file, stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH )

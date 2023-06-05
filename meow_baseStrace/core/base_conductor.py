@@ -6,29 +6,27 @@ from for all conductor instances.
 Author(s): David Marchant
 """
 import shutil
-import smtplib
 import subprocess
 import os 
+import re
 
 from datetime import datetime
 from threading import Event, Thread
 from time import sleep
 from typing import Any, Tuple, Dict, Union
 
+
 from meow_base.core.meow import valid_job
 from meow_base.core.vars import VALID_CONDUCTOR_NAME_CHARS, VALID_CHANNELS, \
     JOB_STATUS, JOB_START_TIME, META_FILE, STATUS_RUNNING, STATUS_DONE , \
-    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, \
-    DEFAULT_JOB_OUTPUT_DIR, DEFAULT_JOB_QUEUE_DIR, JOB_SCRIPT_COMMAND, \
-    JOB_NOTIFICATIONS, JOB_ID, VALID_EMAIL_CHARS, NOTIFICATION_EMAIL, \
-    NOTIFICATION_MSG, JOB_EVENT, get_drt_imp_msg
+    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, CREATED_FILES, \
+    get_drt_imp_msg
 from meow_base.functionality.file_io import write_file, \
-    threadsafe_read_status, threadsafe_update_status, make_dir
+    threadsafe_read_status, threadsafe_update_status
 from meow_base.functionality.validation import check_implementation, \
     valid_string, valid_existing_dir_path, valid_natural, valid_dir_path
 from meow_base.functionality.naming import generate_conductor_id
-from meow_base.functionality.notifications import send_email, \
-    get_notification_message_with_subs
+
 
 class BaseConductor:
     # An identifier for a conductor within the runner. Can be manually set in 
@@ -50,14 +48,7 @@ class BaseConductor:
     # A count, for how long a conductor will wait if told that there are no 
     # jobs in the runner, before polling again. Default is 5 seconds.
     pause_time: int
-    # Email address to send notification emails on, if requested. 
-    notification_email:str
-    # SMTP host for notification emails. 
-    notification_email_smtp:str
-    def __init__(self, job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR, 
-            job_output_dir:str=DEFAULT_JOB_OUTPUT_DIR, name:str="", 
-            pause_time:int=5, notification_email:str="", 
-            notification_email_smtp:str="")->None:
+    def __init__(self, name:str="", pause_time:int=5)->None:
         """BaseConductor Constructor. This will check that any class inheriting
         from it implements its validation functions."""
         check_implementation(type(self).valid_execute_criteria, BaseConductor)
@@ -65,16 +56,8 @@ class BaseConductor:
             name = generate_conductor_id()
         self._is_valid_name(name)
         self.name = name    
-        self._is_valid_job_queue_dir(job_queue_dir)
-        self.job_queue_dir = job_queue_dir
-        self._is_valid_job_output_dir(job_output_dir)
-        self.job_output_dir = job_output_dir
         self._is_valid_pause_time(pause_time)
         self.pause_time = pause_time
-        self._is_valid_notification_email_and_smtp(
-            notification_email, notification_email_smtp)
-        self.notification_email = notification_email
-        self.notification_email_smtp = notification_email_smtp
 
     def __new__(cls, *args, **kwargs):
         """A check that this base class is not instantiated itself, only 
@@ -95,44 +78,6 @@ class BaseConductor:
         automatically called during initialisation. This does not need to be 
         overridden by child classes."""
         valid_natural(pause_time, hint="BaseHandler.pause_time")
-
-    def _is_valid_job_queue_dir(self, job_queue_dir:str)->None:
-        """Validation check for 'job_queue_dir' variable from main 
-        constructor."""
-        valid_dir_path(job_queue_dir, must_exist=False)
-        if not os.path.exists(job_queue_dir):
-            make_dir(job_queue_dir)
-
-    def _is_valid_job_output_dir(self, job_output_dir:str)->None:
-        """Validation check for 'job_output_dir' variable from main 
-        constructor."""
-        valid_dir_path(job_output_dir, must_exist=False)
-        if not os.path.exists(job_output_dir):
-            make_dir(job_output_dir)
-
-    def _is_valid_notification_email_and_smtp(self, email:str, smtp:str)->None:
-        """Validation check for 'notification_email' and 
-        'notification_email_smtp' variable from main constructor. Carried out 
-        together are both necessary for working email notification."""
-        valid_string(
-            email, 
-            VALID_EMAIL_CHARS, 
-            0, 
-            hint="BaseConductor.notification_email"
-        )
-
-        valid_string(
-            smtp, 
-            VALID_EMAIL_CHARS, 
-            0, 
-            hint="BaseConductor.notification_email"
-        )
-
-        if email and not smtp or smtp and not email:
-            raise ValueError(
-                "Cannot define email notification without both email and smtp "
-                "host being defined"
-            )
 
     def prompt_runner_for_job(self)->Union[Dict[str,Any],Any]:
         self.to_runner_job.send(1)
@@ -206,7 +151,7 @@ class BaseConductor:
 
         # Test our job parameters. Even if its gibberish, we still move to 
         # output
-        notification_message = None
+        abort = False
         try:
             meta_file = os.path.join(job_dir, META_FILE)
             job = threadsafe_read_status(meta_file)
@@ -225,27 +170,57 @@ class BaseConductor:
             # If something has gone wrong at this stage then its bad, so we 
             # need to make our own error file
             error_file = os.path.join(job_dir, BACKUP_JOB_ERROR_FILE)
-            notification_message = f"Recieved incorrectly setup job.\n\n{e}"
-            write_file(notification_message, error_file)
+            write_file(f"Recieved incorrectly setup job.\n\n{e}", error_file)
+            abort = True
 
+################## TRACING #######################################################
         # execute the job
-        if not notification_message:
+        if not abort:
             try:
                 result = subprocess.call(
-                    os.path.join(job_dir, job[JOB_SCRIPT_COMMAND]), 
-                    cwd="."
+                    f'strace -o {os.path.join(job_dir, job["id"])}.trace --trace=open,openat,mkdir --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
+                    cwd=".", 
+                    shell = True
                 )
-
+                
                 if result == 0:
-                    # Update the status file with the finalised status
+                    #Find the created files from the log file: 
+                    log_file = os.path.join(job_dir, f'{job["id"]}.trace')
+
+                    #Checking if the log file was created: 
+                    if not os.path.exists(log_file):
+                        threadsafe_update_status(
+                            {JOB_ERROR: "Trace file was not created. Tracing output files was not possible"
+                            }
+                        )
+                    
+                    # Read the log file and extract unique string: 
+                    unique_filenames = set()
+                    with open(log_file, 'r') as file: 
+                        for line in file: 
+                            if 'O_CREAT' in line or 'mkdir' in line:
+                                try:
+                                    start_index = line.index('"') + 1
+                                    end_index = line.index('"', start_index)
+                                    filename = line[start_index:end_index]
+                                    unique_filenames.add(os.path.basename(filename))
+                                except ValueError:
+                                    pass
+                            
+
+                    #delete file because we are done with it: 
+                    os.remove(f"{os.path.join(job_dir, job['id'])}.trace")
+                    
+                    # Update the status file with the finalised status and created files
                     threadsafe_update_status(
                         {
                             JOB_STATUS: STATUS_DONE,
-                            JOB_END_TIME: datetime.now()
+                            JOB_END_TIME: datetime.now(),
+                            CREATED_FILES: list(unique_filenames)
                         }, 
                         meta_file
                     )
-
+#######################################################################################
                 else:
                     # Update the status file with the error status. Don't 
                     # overwrite any more specific error messages already 
@@ -277,23 +252,6 @@ class BaseConductor:
             os.path.join(self.job_output_dir, os.path.basename(job_dir))
         shutil.move(job_dir, job_output_dir)
 
-        result_job_file = os.path.join(job_output_dir, META_FILE)
-        if os.path.exists(result_job_file):
-            status = threadsafe_read_status(result_job_file)
-
-            if JOB_NOTIFICATIONS in status:
-                if NOTIFICATION_MSG in status[JOB_NOTIFICATIONS]:
-                    msg = get_notification_message_with_subs(
-                        status[JOB_NOTIFICATIONS][NOTIFICATION_MSG], 
-                        status[JOB_ID],
-                        status[JOB_EVENT]
-                    )
-                else:
-                    msg = f"Job {status[JOB_ID]} completed with status {status[JOB_STATUS]}."
-                    if JOB_ERROR in status:
-                        msg = f"{msg} {status[JOB_ERROR]}" 
-                self.send_notifications(msg, status[JOB_NOTIFICATIONS])
-
     def execute(self, job_dir:str)->None:
         """Function to run job execution. By default this will simply call the 
         run_job function, to execute the job locally. However, this function 
@@ -301,17 +259,3 @@ class BaseConductor:
         another resource. Note that the job itself should be executed using the 
         run_job func in order to maintain expected logging etc."""
         self.run_job(job_dir)
-
-    def send_notifications(self, message, settings:Dict[str,Any])->None:
-        try:
-            if NOTIFICATION_EMAIL in settings \
-                    and self.notification_email \
-                    and self.notification_email_smtp:
-                send_email(
-                    self.notification_email_smtp, 
-                    self.notification_email,
-                    settings[NOTIFICATION_EMAIL],
-                    message
-                )
-        except Exception:
-            pass

@@ -15,15 +15,13 @@ from time import sleep
 
 from meow_base.core.vars import VALID_CHANNELS, EVENT_RULE, EVENT_PATH, \
     VALID_HANDLER_NAME_CHARS, META_FILE, JOB_ID, JOB_FILE, JOB_PARAMETERS, \
-    DEFAULT_JOB_QUEUE_DIR, JOB_RECIPE_COMMAND, JOB_SCRIPT_COMMAND, \
-    EVENT_TYPE, get_drt_imp_msg
+    get_drt_imp_msg
 from meow_base.core.meow import valid_event
-from meow_base.patterns.file_event_pattern import WATCHDOG_HASH, \
-    EVENT_TYPE_WATCHDOG
+from meow_base.patterns.file_event_pattern import WATCHDOG_HASH
 from meow_base.functionality.file_io import threadsafe_write_status, \
     threadsafe_update_status, make_dir, write_file, lines_to_string
 from meow_base.functionality.validation import check_implementation, \
-    valid_string, valid_natural, valid_dir_path
+    valid_string, valid_natural
 from meow_base.functionality.meow import create_job_metadata_dict, \
     replace_keywords
 from meow_base.functionality.naming import generate_handler_id
@@ -49,8 +47,7 @@ class BaseHandler:
     # A count, for how long a handler will wait if told that there are no 
     # events in the runner, before polling again. Default is 5 seconds.
     pause_time: int
-    def __init__(self, name:str='', job_queue_dir:str=DEFAULT_JOB_QUEUE_DIR, 
-            pause_time:int=5)->None:
+    def __init__(self, name:str='', pause_time:int=5)->None:
         """BaseHandler Constructor. This will check that any class inheriting 
         from it implements its validation functions."""
         check_implementation(type(self).valid_handle_criteria, BaseHandler)
@@ -60,8 +57,6 @@ class BaseHandler:
             name = generate_handler_id()
         self._is_valid_name(name)
         self.name = name
-        self._is_valid_job_queue_dir(job_queue_dir)
-        self.job_queue_dir = job_queue_dir
         self._is_valid_pause_time(pause_time)
         self.pause_time = pause_time
 
@@ -84,13 +79,6 @@ class BaseHandler:
         automatically called during initialisation. This does not need to be 
         overridden by child classes."""
         valid_natural(pause_time, hint="BaseHandler.pause_time")
-
-    def _is_valid_job_queue_dir(self, job_queue_dir)->None:
-        """Validation check for 'job_queue_dir' variable from main 
-        constructor."""
-        valid_dir_path(job_queue_dir, must_exist=False)
-        if not os.path.exists(job_queue_dir):
-            make_dir(job_queue_dir)
 
     def prompt_runner_for_event(self)->Union[Dict[str,Any],Any]:
         self.to_runner_event.send(1)
@@ -165,13 +153,23 @@ class BaseHandler:
         rule = event[EVENT_RULE]
 
         # Assemble job parameters dict from pattern variables
-        params = rule.pattern.assemble_params_dict(event)
+        yaml_dict = {}
+        for var, val in rule.pattern.parameters.items():
+            yaml_dict[var] = val
+        for var, val in rule.pattern.outputs.items():
+            yaml_dict[var] = val
+        yaml_dict[rule.pattern.triggering_file] = event[EVENT_PATH]
 
-        if isinstance(params, list):
-            for param in params:
-                self.setup_job(event, param)
+        # If no parameter sweeps, then one job will suffice
+        if not rule.pattern.sweep:
+            self.setup_job(event, yaml_dict)
         else:
-            self.setup_job(event, params)
+            # If parameter sweeps, then many jobs created
+            values_list = rule.pattern.expand_sweeps()
+            for values in values_list:
+                for value in values:
+                    yaml_dict[value[0]] = value[1]
+                self.setup_job(event, yaml_dict)
 
     def setup_job(self, event:Dict[str,Any], params_dict:Dict[str,Any])->None:
         """Function to set up new job dict and send it to the runner to be 
@@ -182,10 +180,12 @@ class BaseHandler:
 
         # Get updated job parameters
         # TODO replace this with generic implementation
+        from meow_base.patterns.file_event_pattern import WATCHDOG_BASE
         params_dict = replace_keywords(
             params_dict,
             meow_job[JOB_ID],
-            event
+            event[EVENT_PATH],
+            event[WATCHDOG_BASE]
         )
 
         # Create a base job directory
@@ -199,13 +199,13 @@ class BaseHandler:
         recipe_command = self.create_job_recipe_file(job_dir, event, params_dict)
 
         # Create job script file
-        script_command = self.create_job_script_file(job_dir, event, recipe_command)
+        script_command = self.create_job_script_file(job_dir, recipe_command)
 
         threadsafe_update_status(
             {
                 # TODO make me not tmp variables and update job dict validation
-                JOB_RECIPE_COMMAND: recipe_command,
-                JOB_SCRIPT_COMMAND: script_command
+                "tmp recipe command": recipe_command,
+                "tmp script command": script_command
             }, 
             meta_file
         )
@@ -234,41 +234,35 @@ class BaseHandler:
 
         return meta_file
 
-    def create_job_recipe_file(self, job_dir:str, event:Dict[str,Any], 
-            params_dict:Dict[str,Any]
+    def create_job_recipe_file(self, job_dir:str, event:Dict[str,Any], params_dict:Dict[str,Any]
             )->str:
         pass # Must implemented
 
-    def create_job_script_file(self, job_dir:str, event:Dict[str,Any], 
-            recipe_command:str)->str:
+    def create_job_script_file(self, job_dir:str, recipe_command:str)->str:
         # TODO Make this more generic, so only checking hashes if that is present
-        job_script = [ "#!/bin/bash", "" ]
-
-        if event[EVENT_TYPE] == EVENT_TYPE_WATCHDOG and WATCHDOG_HASH in event:
-            job_script.extend([
-                "# Get job params",
-                f"given_hash=$(grep '{WATCHDOG_HASH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 14-)",
-                f"event_path=$(grep '{EVENT_PATH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 15-)",
-                "",
-                "echo event_path: $event_path",
-                "echo given_hash: $given_hash",
-                "",
-                "# Check hash of input file to avoid race conditions",
-                "actual_hash=$(sha256sum $event_path | cut -c -64)",
-                "echo actual_hash: $actual_hash",
-                "if [ $given_hash != $actual_hash ]; then",
-                "   echo Job was skipped as triggering file has been modified since scheduling",
-                "   exit 134",
-                "fi",
-                "",
-            ])
-        
-        job_script.extend([
+        job_script = [
+            "#!/bin/bash",
+            "",
+            "# Get job params",
+            f"given_hash=$(grep '{WATCHDOG_HASH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 14-)",
+            f"event_path=$(grep '{EVENT_PATH}: *' $(dirname $0)/job.yml | tail -n1 | cut -c 15-)",
+            "",
+            "echo event_path: $event_path",
+            "echo given_hash: $given_hash",
+            "",
+            "# Check hash of input file to avoid race conditions",
+            "actual_hash=$(sha256sum $event_path | cut -c -64)",
+            "echo actual_hash: $actual_hash",
+            "if [ $given_hash != $actual_hash ]; then",
+            "   echo Job was skipped as triggering file has been modified since scheduling",
+            "   exit 134",
+            "fi",
+            "",
             "# Call actual job script",
-            f"{recipe_command} > $(dirname $0)/stdout.txt 2> $(dirname $0)/stderr.txt",
+            recipe_command,
             "",
             "exit $?"
-        ])
+        ]
         job_file = os.path.join(job_dir, JOB_FILE)
         write_file(lines_to_string(job_script), job_file)
         os.chmod(job_file, stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH )

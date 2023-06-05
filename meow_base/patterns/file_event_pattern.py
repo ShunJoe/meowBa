@@ -13,7 +13,7 @@ import os
 from fnmatch import translate
 from re import match
 from time import time, sleep
-from typing import Any, Union, Dict, List, Tuple
+from typing import Any, Union, Dict, List
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
@@ -27,8 +27,8 @@ from meow_base.functionality.validation import check_type, valid_string, \
 from meow_base.core.vars import VALID_RECIPE_NAME_CHARS, \
     VALID_VARIABLE_NAME_CHARS, FILE_EVENTS, FILE_CREATE_EVENT, \
     FILE_MODIFY_EVENT, FILE_MOVED_EVENT, DEBUG_INFO, DIR_EVENTS, \
-    FILE_RETROACTIVE_EVENT, SHA256, VALID_REGEX_CHARS, FILE_CLOSED_EVENT, \
-    DIR_RETROACTIVE_EVENT, EVENT_PATH, DEBUG_DEBUG
+    FILE_RETROACTIVE_EVENT, SHA256, VALID_PATH_CHARS, FILE_CLOSED_EVENT, \
+    DIR_RETROACTIVE_EVENT
 from meow_base.functionality.debug import setup_debugging, print_debug
 from meow_base.functionality.hashing import get_hash
 from meow_base.functionality.meow import create_event
@@ -41,15 +41,6 @@ _DEFAULT_MASK = [
     FILE_RETROACTIVE_EVENT,
     FILE_CLOSED_EVENT
 ]
-
-# file event trigger keyword replacements
-KEYWORD_BASE = "{BASE}"
-KEYWORD_REL_PATH = "{REL_PATH}"
-KEYWORD_REL_DIR = "{REL_DIR}"
-KEYWORD_DIR = "{DIR}"
-KEYWORD_FILENAME = "{FILENAME}"
-KEYWORD_PREFIX = "{PREFIX}"
-KEYWORD_EXTENSION = "{EXTENSION}"
 
 # watchdog events
 EVENT_TYPE_WATCHDOG = "watchdog"
@@ -93,11 +84,10 @@ class FileEventPattern(BasePattern):
     def __init__(self, name:str, triggering_path:str, recipe:str, 
             triggering_file:str, event_mask:List[str]=_DEFAULT_MASK, 
             parameters:Dict[str,Any]={}, outputs:Dict[str,Any]={}, 
-            sweep:Dict[str,Any]={}, notifications:Dict[str,Any]={}):
+            sweep:Dict[str,Any]={}):
         """FileEventPattern Constructor. This is used to match against file 
         system events, as caught by the python watchdog module."""
-        super().__init__(name, recipe, parameters=parameters, outputs=outputs, 
-            sweep=sweep, notifications=notifications)
+        super().__init__(name, recipe, parameters, outputs, sweep)
         self._is_valid_triggering_path(triggering_path)
         self.triggering_path = triggering_path
         self._is_valid_triggering_file(triggering_file)
@@ -110,7 +100,7 @@ class FileEventPattern(BasePattern):
         constructor."""
         valid_string(
             triggering_path, 
-            VALID_REGEX_CHARS, 
+            VALID_PATH_CHARS+'*', 
             min_length=1, 
             hint="FileEventPattern.triggering_path"
         )
@@ -191,39 +181,6 @@ class FileEventPattern(BasePattern):
         """Validation check for 'sweep' variable from main constructor."""
         return super()._is_valid_sweep(sweep)
 
-    #TODO test me
-    def assemble_params_dict(self, event:Dict[str,Any])->Dict[str,Any]|List[Dict[str,Any]]:
-        base_params = super().assemble_params_dict(event)
-        if isinstance(base_params, list):
-            for i in range(len(base_params)):
-                base_params[i][self.triggering_file] = event[EVENT_PATH]
-        else:
-            base_params[self.triggering_file] = event[EVENT_PATH]
-        return base_params
-    
-    #TODO test me
-    def get_additional_replacement_keywords(self
-            )->Tuple[Dict[str,str],List[str]]:
-        return ({
-            KEYWORD_BASE: 
-                f"val.replace('{KEYWORD_BASE}', event['{WATCHDOG_BASE}'])",
-            KEYWORD_REL_PATH: 
-                f"val.replace('{KEYWORD_REL_PATH}', relpath(event[EVENT_PATH], event['{WATCHDOG_BASE}']))",
-            KEYWORD_REL_DIR: 
-                f"val.replace('{KEYWORD_REL_DIR}', dirname(relpath(event[EVENT_PATH], event['{WATCHDOG_BASE}'])))",
-            KEYWORD_DIR: 
-                f"val.replace('{KEYWORD_DIR}', dirname(event[EVENT_PATH]))",
-            KEYWORD_FILENAME: 
-                f"val.replace('{KEYWORD_FILENAME}', basename(event[EVENT_PATH]))",
-            KEYWORD_PREFIX: 
-                f"val.replace('{KEYWORD_PREFIX}', splitext(basename(event[EVENT_PATH]))[0])",
-            KEYWORD_EXTENSION: 
-                f"val.replace('{KEYWORD_EXTENSION}', splitext(basename(event[EVENT_PATH]))[1])"
-        },(
-            "from os.path import dirname",
-            "from os.path import relpath"
-        ))
-    
 
 class WatchdogMonitor(BaseMonitor):
     # A handler object, to catch events
@@ -281,10 +238,6 @@ class WatchdogMonitor(BaseMonitor):
         prepend = "dir_" if event.is_directory else "file_" 
         event_types = [prepend+i for i in event.event_type]
 
-        print_debug(self._print_target, self.debug_level,  
-            f"Matching event at {src_path} with types {event_types}", 
-            DEBUG_INFO)
-
         # Remove the base dir from the path as trigger paths are given relative
         # to that
         handle_path = src_path.replace(self.base_dir, '', 1)
@@ -295,6 +248,7 @@ class WatchdogMonitor(BaseMonitor):
         self._rules_lock.acquire()
         try:
             for rule in self._rules.values():
+                
                 # Skip events not within the event mask
                 if any(i in event_types for i in rule.pattern.event_mask) \
                         != True:
@@ -309,13 +263,6 @@ class WatchdogMonitor(BaseMonitor):
                 else:
                     direct_regexp = recursive_regexp.replace(
                         '.*', '[^'+ os.path.sep +']*')
-
-                direct_regexp = recursive_regexp
-
-                print_debug(self._print_target, self.debug_level,  
-                    f"comparing {recursive_regexp} against {handle_path}", 
-                    DEBUG_DEBUG)
-
                 recursive_hit = match(recursive_regexp, handle_path)
                 direct_hit = match(direct_regexp, handle_path)
 
@@ -437,14 +384,9 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         self._recent_jobs_lock.acquire()
         try:
             if event.src_path in self._recent_jobs: 
-                if event.time_stamp > self._recent_jobs[event.src_path][0]+self._settletime:
-                    self._recent_jobs[event.src_path] = \
-                        [event.time_stamp, {event.event_type}]
-
-                elif event.time_stamp > self._recent_jobs[event.src_path][0]:
+                if event.time_stamp > self._recent_jobs[event.src_path][0]:
                     self._recent_jobs[event.src_path][0] = event.time_stamp
                     self._recent_jobs[event.src_path][1].add(event.event_type)
-
                 else:
                     self._recent_jobs_lock.release()
                     return
@@ -455,7 +397,6 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             # If we have a closed event then short-cut the wait and send event
             # immediately        
             if event.event_type == FILE_CLOSED_EVENT:
-                event.event_type = [ FILE_CLOSED_EVENT ]
                 self.monitor.match(event)
                 self._recent_jobs_lock.release()
                 return

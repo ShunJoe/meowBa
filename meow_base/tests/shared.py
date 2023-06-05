@@ -6,13 +6,8 @@ Author(s): David Marchant
 import os
 
 from distutils.dir_util import copy_tree
-from typing import Any, Dict, List, Tuple
+from typing import List
 
-from meow_base.core.base_conductor import BaseConductor
-from meow_base.core.base_handler import BaseHandler
-from meow_base.core.base_monitor import BaseMonitor
-from meow_base.core.base_pattern import BasePattern
-from meow_base.core.base_recipe import BaseRecipe
 from meow_base.core.vars import DEFAULT_JOB_OUTPUT_DIR, \
     DEFAULT_JOB_QUEUE_DIR, LOCK_EXT
 from meow_base.functionality.file_io import make_dir, rmtree
@@ -1384,7 +1379,7 @@ IDMC_UTILS_PYTHON_SCRIPT = [
 GENERATE_PYTHON_SCRIPT = [
     "import numpy as np",
     "import random",
-    "import foam_ct_phantom as foam_ct_phantom",
+    "import foam_ct_phantom.foam_ct_phantom as foam_ct_phantom",
     "",
     "def generate_foam(nspheres_per_unit, vx, vy, vz, res):",
     "    def maxsize_func(x, y, z):",
@@ -1425,64 +1420,3 @@ valid_recipe_one = JupyterNotebookRecipe(
     "recipe_one", BAREBONES_NOTEBOOK)
 valid_recipe_two = JupyterNotebookRecipe(
     "recipe_two", BAREBONES_NOTEBOOK)
-
-class SharedTestPattern(BasePattern):
-    def _is_valid_recipe(self, recipe: Any) -> None:
-        pass
-
-    def _is_valid_parameters(self, parameters: Any) -> None:
-        pass
-
-    def _is_valid_output(self, outputs: Any) -> None:
-        pass
-
-class SharedTestRecipe(BaseRecipe):
-    def _is_valid_recipe(self, recipe: Any) -> None:
-        pass
-
-    def _is_valid_parameters(self, parameters: Any) -> None:
-        pass
-
-    def _is_valid_requirements(self, requirements: Any) -> None:
-        pass
-
-class SharedTestMonitor(BaseMonitor):
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
-    def _get_valid_pattern_types(self) -> List[type]:
-        return [SharedTestPattern]
-    
-    def _get_valid_recipe_types(self) -> List[type]:
-        return [SharedTestRecipe]
-
-class SharedTestHandler(BaseHandler):
-    def valid_handle_criteria(self, event: Dict[str, Any]) -> Tuple[bool, str]:
-        pass
-
-    def get_created_job_type(self) -> str:
-        return "test"
-
-    def create_job_recipe_file(self, job_dir: str, event: Dict[str, Any], params_dict: Dict[str, Any]) -> str:
-        return "command"
-
-class SharedTestConductor(BaseConductor):
-    def valid_execute_criteria(self, job:Dict[str,Any])->Tuple[bool,str]:
-        pass
-
-class EmailHandler:
-    def __init__(self) -> None:
-        self.messages = []
-
-    async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
-        if not address.endswith('localhost'):
-            return '550 not relaying to that domain'
-        envelope.rcpt_tos.append(address)
-        return '250 OK'
-    
-    async def handle_DATA(self, server, session, envelope):
-        self.messages.append(envelope)
-        return '250 Message accepted for delivery'

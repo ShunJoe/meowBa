@@ -1,20 +1,20 @@
--vars.py
+-core/vars.py
 -- Add the following code to the top of vars.py with the other variables: 
 #Tracing
 CREATED_FILES = 'created_files'
 
 
--meow.py
+-functionality/meow.py
 --  Add CREATED_FILES to the list of variables imported from vars.py
 -- In the function 'create_job_metadata_dict', add ',CREATED_FILES: []' to the job_dict
 
 
 
-- base_conductor
+- core/base_conductor
 -- Add CREATED_FILES to the list of variables imported from vars.py
 
 
---Add the following code to the base_conductor line 174 abd delete everything in the 'if not abort' clause: 
+--Add the following code to the base_conductor line 174 and delete everything in the 'if not abort' clause: 
 ################# TRACING #######################################################
         # execute the job
         if not abort:

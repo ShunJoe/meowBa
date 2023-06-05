@@ -4,7 +4,7 @@ import unittest
 from meow_base.core.rule import Rule
 from meow_base.patterns.file_event_pattern import FileEventPattern
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
-from shared import BAREBONES_NOTEBOOK, setup, teardown
+from meow_base.tests.shared import BAREBONES_NOTEBOOK, setup, teardown
 
 class CorrectnessTests(unittest.TestCase):
     def setUp(self)->None:

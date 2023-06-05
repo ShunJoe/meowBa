@@ -178,7 +178,7 @@ def write_notebook(source:Dict[str,Any], filename:str):
     with open(filename, 'w') as job_file:
         json.dump(source, job_file)
 
-def lines_to_string(lines:List[str], join_char:str='\n')->str:
+def lines_to_string(lines:List[str])->str:
     """Function to convert a list of str lines, into one continuous string 
     separated by newline characters"""
-    return join_char.join(lines)
+    return "\n".join(lines)

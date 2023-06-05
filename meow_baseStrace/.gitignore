@@ -43,7 +43,6 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
-coverage/
 .cache
 nosetests.xml
 coverage.xml
@@ -59,10 +58,6 @@ tests/test_data
 tests/job_output
 tests/job_queue
 tests/Backup*
-benchmarking/benchmark_base
-benchmarking/job_output
-benchmarking/job_queue
-benchmarking/result*
 
 # hdf5
 *.h5

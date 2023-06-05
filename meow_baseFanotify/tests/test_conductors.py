@@ -2,6 +2,7 @@
 import os
 import stat
 import unittest
+import time
 
 from datetime import datetime
 from multiprocessing import Pipe
@@ -13,7 +14,7 @@ from meow_base.core.vars import JOB_TYPE_PYTHON, SHA256, \
     JOB_EVENT, META_FILE, JOB_STATUS, JOB_ERROR, JOB_TYPE, \
     JOB_PATTERN, STATUS_DONE, JOB_TYPE_PAPERMILL, JOB_RECIPE, JOB_RULE, \
     JOB_CREATE_TIME, JOB_REQUIREMENTS, EVENT_PATH, EVENT_RULE, EVENT_TYPE, \
-    JOB_TYPE_BASH, JOB_FILE, JOB_SCRIPT_COMMAND
+    JOB_TYPE_BASH, JOB_FILE
 from meow_base.conductors import LocalPythonConductor, LocalBashConductor
 from meow_base.functionality.file_io import read_file, read_yaml, write_file, \
     write_yaml, lines_to_string, make_dir, threadsafe_read_status
@@ -27,7 +28,7 @@ from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe, \
     PapermillHandler
 from meow_base.recipes.python_recipe import PythonRecipe, PythonHandler
 from meow_base.recipes.bash_recipe import BashRecipe, BashHandler
-from shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
+from meow_base.tests.shared import TEST_MONITOR_BASE, APPENDING_NOTEBOOK, TEST_JOB_OUTPUT, \
     TEST_JOB_QUEUE, COMPLETE_PYTHON_SCRIPT, BAREBONES_PYTHON_SCRIPT, \
     BAREBONES_NOTEBOOK, COMPLETE_BASH_SCRIPT, BAREBONES_BASH_SCRIPT, \
     setup, teardown, count_non_locks
@@ -142,8 +143,8 @@ class PythonTests(unittest.TestCase):
         self.assertNotIn(JOB_ERROR, status)
 
         print(os.listdir(job_output_dir))
-        self.assertEqual(count_non_locks(job_output_dir), 5)
-        for f in [META_FILE, "recipe.py", "job.sh", "stdout.txt", "stderr.txt"]:
+        self.assertEqual(count_non_locks(job_output_dir), 4)
+        for f in [META_FILE, "recipe.py", "output.log", "job.sh"]:
             self.assertTrue(os.path.exists(os.path.join(job_output_dir, f)))
 
         self.assertTrue(os.path.exists(result_path))
@@ -229,8 +230,8 @@ class PythonTests(unittest.TestCase):
         self.assertIn(JOB_STATUS, status)
         self.assertEqual(status[JOB_STATUS], STATUS_DONE)
 
-        self.assertEqual(count_non_locks(job_output_dir), 6)
-        for f in [META_FILE, JOB_FILE, "result.ipynb", "recipe.ipynb", "stdout.txt", "stderr.txt"]:
+        self.assertEqual(count_non_locks(job_output_dir), 4)
+        for f in [META_FILE, JOB_FILE, "result.ipynb", "recipe.ipynb"]:
             self.assertTrue(os.path.exists(os.path.join(job_output_dir, f)))
 
         self.assertTrue(os.path.exists(result_path))
@@ -641,11 +642,11 @@ class BashTests(unittest.TestCase):
         self.assertEqual(status[JOB_STATUS], STATUS_DONE)
         self.assertNotIn(JOB_ERROR, status)
 
-        self.assertEqual(count_non_locks(job_output_dir), 5)
-        for f in [META_FILE, JOB_FILE, "stdout.txt", "stderr.txt"]:
+        self.assertEqual(count_non_locks(job_output_dir), 3)
+        for f in [META_FILE, JOB_FILE]:
             self.assertTrue(os.path.exists(os.path.join(job_output_dir, f)))
         job = threadsafe_read_status(os.path.join(job_output_dir, META_FILE))
-        self.assertTrue(os.path.exists(os.path.join(job_output_dir, job[JOB_SCRIPT_COMMAND])))
+        self.assertTrue(os.path.exists(os.path.join(job_output_dir, job["tmp script command"])))
 
         self.assertTrue(os.path.exists(
             os.path.join(job_output_dir, )))

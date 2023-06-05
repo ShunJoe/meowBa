@@ -4,7 +4,6 @@ import json
 import unittest
 import os
 
-from aiosmtpd.controller import Controller
 from datetime import datetime
 from multiprocessing import Pipe, Queue
 from os.path import basename
@@ -25,26 +24,23 @@ from meow_base.functionality.file_io import lines_to_string, make_dir, \
     write_notebook, write_yaml, threadsafe_read_status, \
     threadsafe_update_status, threadsafe_write_status
 from meow_base.functionality.hashing import get_hash
-from meow_base.functionality.meow import KEYWORD_JOB, KEYWORD_PATH, \
+from meow_base.functionality.meow import KEYWORD_BASE, KEYWORD_DIR, \
+    KEYWORD_EXTENSION, KEYWORD_FILENAME, KEYWORD_JOB, KEYWORD_PATH, \
+    KEYWORD_PREFIX, KEYWORD_REL_DIR, KEYWORD_REL_PATH, \
     create_event, create_job_metadata_dict, create_rule, create_rules, \
     replace_keywords, create_parameter_sweep
 from meow_base.functionality.naming import _generate_id
-from meow_base.functionality.notifications import send_email
 from meow_base.functionality.parameterisation import \
-    parameterize_jupyter_notebook, parameterize_python_script, \
-    parameterize_bash_script
+    parameterize_jupyter_notebook, parameterize_python_script
 from meow_base.functionality.process_io import wait
 from meow_base.functionality.requirements import REQUIREMENT_PYTHON, \
     REQ_PYTHON_ENVIRONMENT, REQ_PYTHON_MODULES, REQ_PYTHON_VERSION, \
     create_python_requirements, check_requirements
 from meow_base.patterns.file_event_pattern import FileEventPattern, \
-    EVENT_TYPE_WATCHDOG, WATCHDOG_BASE, WATCHDOG_HASH, KEYWORD_BASE, \
-    KEYWORD_REL_DIR, KEYWORD_REL_PATH, KEYWORD_DIR, KEYWORD_EXTENSION, \
-    KEYWORD_FILENAME, KEYWORD_PREFIX, create_watchdog_event
+    EVENT_TYPE_WATCHDOG, WATCHDOG_BASE, WATCHDOG_HASH
 from meow_base.recipes.jupyter_notebook_recipe import JupyterNotebookRecipe
-from shared import EmailHandler, SharedTestRecipe, TEST_MONITOR_BASE, \
-    COMPLETE_NOTEBOOK, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, \
-    COMPLETE_BASH_SCRIPT, valid_recipe_two, valid_recipe_one, \
+from shared import TEST_MONITOR_BASE, COMPLETE_NOTEBOOK, APPENDING_NOTEBOOK, \
+    COMPLETE_PYTHON_SCRIPT, valid_recipe_two, valid_recipe_one, \
     valid_pattern_one, valid_pattern_two, setup, teardown
 
 class DebugTests(unittest.TestCase):
@@ -598,9 +594,8 @@ class HashingTests(unittest.TestCase):
     def testGetFileHashSha256NoFile(self)->None:
         file_path = os.path.join(TEST_MONITOR_BASE, "file.txt")
 
-        hash = get_hash(file_path, SHA256)
-
-        self.assertIsNone(hash)
+        with self.assertRaises(FileNotFoundError):        
+            get_hash(file_path, SHA256)
 
 
 class MeowTests(unittest.TestCase):
@@ -735,22 +730,11 @@ class MeowTests(unittest.TestCase):
             "N": 1
         }
 
-        p = FileEventPattern("p", "tp", "r", "tf")
-        r = SharedTestRecipe("r", "something")
-        rule = Rule(p, r)
-
-        event = create_watchdog_event(
-            os.path.join("base", "src", "dir", "file.ext"),
-            rule,
-            os.path.join("base", "monitor", "dir"),
-            time(),
-            "hash"
-        )
-
         replaced = replace_keywords(
             test_dict, 
             "job_id", 
-            event
+            os.path.join("base", "src", "dir", "file.ext"), 
+            os.path.join("base", "monitor", "dir")
         )
 
         self.assertIsInstance(replaced, dict)
@@ -900,41 +884,6 @@ class NamingTests(unittest.TestCase):
         self.assertTrue(prefix_id.startswith("Test"))
 
 
-class NotificationTests(unittest.TestCase):
-    def setUp(self)->None:
-        super().setUp()
-        setup()
-
-    def tearDown(self)->None:
-        super().tearDown()
-        teardown()
-
-    # Test that send email sends emails   
-    def testSendEmail(self)->None:
-        controller = Controller(EmailHandler(), hostname="localhost", port=1025)
-        controller.start()
-
-        self.assertEqual(len(controller.handler.messages), 0)
-
-        send_email(
-            "localhost:1025",
-            "sender@localhost",
-            "reciever@localhost",
-            "test test test"
-        )
-
-        sleep(1)
-
-        controller.stop()
-        self.assertEqual(len(controller.handler.messages), 1)
-        self.assertEqual(
-            controller.handler.messages[0].mail_from, "sender@localhost")
-        self.assertEqual(
-            controller.handler.messages[0].rcpt_tos, ["reciever@localhost"])
-        self.assertEqual(
-            controller.handler.messages[0].content, b"test test test\r\n")
-
-
 class ParameterisationTests(unittest.TestCase):
     def setUp(self)->None:
         super().setUp()
@@ -981,52 +930,6 @@ class ParameterisationTests(unittest.TestCase):
 
         self.assertNotEqual(ps, COMPLETE_PYTHON_SCRIPT)
         self.assertEqual(ps[2], "num = 50")
-
-    # Test that parameterize_python_script parameterises given script
-    def testParameteriseBashScript(self)->None:
-        ps = parameterize_bash_script(
-            COMPLETE_BASH_SCRIPT, {})
-        
-        self.assertEqual(ps, COMPLETE_BASH_SCRIPT)
-
-        ps = parameterize_python_script(
-            COMPLETE_BASH_SCRIPT, {"a": 50})
-        
-        self.assertEqual(ps, COMPLETE_BASH_SCRIPT)
-
-        ps = parameterize_python_script(
-            COMPLETE_BASH_SCRIPT, {"num": 50})
-
-        self.assertNotEqual(ps, COMPLETE_BASH_SCRIPT)
-        self.assertEqual(ps[2], "num = 50")
-
-        ps = parameterize_python_script(
-            COMPLETE_BASH_SCRIPT, {
-                "num": 50,
-                "infile": "wham",
-                "outfile": "bam"
-            })
-
-        self.assertNotEqual(ps, COMPLETE_BASH_SCRIPT)
-        self.assertEqual(ps[0], "#!/bin/bash")
-        self.assertEqual(ps[1], "")
-        self.assertEqual(ps[2], "num = 50")
-        self.assertEqual(ps[3], "infile = 'wham'")
-        self.assertEqual(ps[4], "outfile = 'bam'")
-        self.assertEqual(ps[5], "")
-        self.assertEqual(ps[6], 'echo "starting"')
-
-        test_path = os.path.join(TEST_MONITOR_BASE, "test")
-        write_file(lines_to_string(ps), test_path)
-
-        with open(test_path, 'r') as f:
-            written = f.read()
-
-        lines = written.split('\n')
-
-        self.assertEqual(len(ps), len(lines))
-        for i, line in enumerate(lines):
-            self.assertEqual(line, ps[i])
 
 
 class ProcessIoTests(unittest.TestCase):

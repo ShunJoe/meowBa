@@ -3,7 +3,6 @@ import importlib
 import os
 import unittest
 
-from aiosmtpd.controller import Controller
 from multiprocessing import Pipe
 from random import shuffle
 from shutil import copy
@@ -13,8 +12,8 @@ from meow_base.core.base_conductor import BaseConductor
 from meow_base.core.base_handler import BaseHandler
 from meow_base.core.base_monitor import BaseMonitor
 from meow_base.conductors import LocalPythonConductor
-from meow_base.core.vars import JOB_ERROR, META_FILE, JOB_CREATE_TIME, \
-    NOTIFICATION_EMAIL
+from meow_base.core.vars import JOB_TYPE_PAPERMILL, JOB_ERROR, \
+    META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME
 from meow_base.core.runner import MeowRunner
 from meow_base.functionality.file_io import make_dir, read_file, \
     read_notebook, read_yaml, write_file, lines_to_string
@@ -25,11 +24,11 @@ from meow_base.patterns.file_event_pattern import WatchdogMonitor, \
 from meow_base.recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
 from meow_base.recipes.python_recipe import PythonHandler, PythonRecipe
-from shared import EmailHandler, TEST_JOB_QUEUE, TEST_JOB_OUTPUT, \
-    TEST_MONITOR_BASE, MAKER_RECIPE, APPENDING_NOTEBOOK, \
-    COMPLETE_PYTHON_SCRIPT, TEST_DIR, FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, \
-    SEGMENT_FOAM_NOTEBOOK, GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, \
-    IDMC_UTILS_PYTHON_SCRIPT, TEST_DATA, GENERATE_PYTHON_SCRIPT, \
+from shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
+    MAKER_RECIPE, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, \
+    FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, \
+    GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_PYTHON_SCRIPT, \
+    TEST_DATA, GENERATE_PYTHON_SCRIPT, \
     setup, teardown, backup_before_teardown, count_non_locks
 
 pattern_check = FileEventPattern(
@@ -326,11 +325,7 @@ class MeowTests(unittest.TestCase):
             parameters={
                 "extra":"A line from a test Pattern",
                 "outfile":os.path.join("{BASE}", "output", "{FILENAME}")
-            },
-            notifications={
-                NOTIFICATION_EMAIL: "user@localhost"
-            }
-        )
+            })
         recipe = JupyterNotebookRecipe(
             "recipe_one", APPENDING_NOTEBOOK)
 
@@ -349,10 +344,7 @@ class MeowTests(unittest.TestCase):
                 settletime=1
             ), 
             PapermillHandler(),
-            LocalPythonConductor(pause_time=2, 
-                notification_email="alert@localhost",
-                notification_email_smtp="localhost:1025"
-            ),
+            LocalPythonConductor(pause_time=2),
             job_queue_dir=TEST_JOB_QUEUE,
             job_output_dir=TEST_JOB_OUTPUT
         )
@@ -368,13 +360,6 @@ class MeowTests(unittest.TestCase):
 
             if obj == runner.conductors[0]:
                 runner.job_connections[i] = (test_to_runner_runner, runner.job_connections[i][1])
-
-        email_controller = Controller(
-            EmailHandler(), hostname="localhost", port=1025
-        )
-        email_controller.start()
-
-        self.assertEqual(len(email_controller.handler.messages), 0)
 
         runner.start()
 
@@ -414,7 +399,6 @@ class MeowTests(unittest.TestCase):
             loops += 1
 
         job_dir = job_dir.replace(TEST_JOB_QUEUE, TEST_JOB_OUTPUT)
-        job_id = job_dir.replace(f"{TEST_JOB_OUTPUT}{os.path.sep}", "")
 
         self.assertTrue(os.path.exists(os.path.join(start_dir, "A.txt")))
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 1)
@@ -422,23 +406,8 @@ class MeowTests(unittest.TestCase):
 
         runner.stop()
 
-        email_controller.stop()
-        self.assertEqual(len(email_controller.handler.messages), 1)
-        self.assertEqual(
-            email_controller.handler.messages[0].mail_from, 
-            "alert@localhost"
-        )
-        self.assertEqual(
-            email_controller.handler.messages[0].rcpt_tos, 
-            ["user@localhost"]
-        )
-        self.assertEqual(
-            email_controller.handler.messages[0].content.decode(), 
-            f'Job {job_id} completed with status done.\r\n'
-        )
-
         print(os.listdir(job_dir))
-        self.assertEqual(count_non_locks(job_dir), 6)
+        self.assertEqual(count_non_locks(job_dir), 4)
 
         result = read_notebook(
             os.path.join(job_dir, "result.ipynb"))
@@ -462,24 +431,15 @@ class MeowTests(unittest.TestCase):
             parameters={
                 "extra":"A line from Pattern 1",
                 "outfile":os.path.join("{BASE}", "middle", "{FILENAME}")
-            },
-            notifications={
-                NOTIFICATION_EMAIL: "user@localhost"
-            }
-        )
+            })
         pattern_two = FileEventPattern(
             "pattern_two", os.path.join("middle", "A.txt"), "recipe_one", "infile", 
             parameters={
                 "extra":"A line from Pattern 2",
                 "outfile":os.path.join("{BASE}", "output", "{FILENAME}")
-            },
-            notifications={
-                NOTIFICATION_EMAIL: "user@localhost"
-            }
-        )
+            })
         recipe = JupyterNotebookRecipe(
-            "recipe_one", APPENDING_NOTEBOOK
-        )
+            "recipe_one", APPENDING_NOTEBOOK)
 
         patterns = {
             pattern_one.name: pattern_one,
@@ -499,10 +459,7 @@ class MeowTests(unittest.TestCase):
             PapermillHandler(
                 job_queue_dir=TEST_JOB_QUEUE,
             ),
-            LocalPythonConductor(pause_time=2, 
-                notification_email="alert@localhost",
-                notification_email_smtp="localhost:1025"
-            ),
+            LocalPythonConductor(pause_time=2),
             job_queue_dir=TEST_JOB_QUEUE,
             job_output_dir=TEST_JOB_OUTPUT
         )
@@ -519,13 +476,6 @@ class MeowTests(unittest.TestCase):
             if obj == runner.conductors[0]:
                 runner.job_connections[i] = (test_to_runner_runner, runner.job_connections[i][1])
    
-        email_controller = Controller(
-            EmailHandler(), hostname="localhost", port=1025
-        )
-        email_controller.start()
-
-        self.assertEqual(len(email_controller.handler.messages), 0)
-    
         runner.start()
 
         start_dir = os.path.join(TEST_MONITOR_BASE, "start")
@@ -564,25 +514,13 @@ class MeowTests(unittest.TestCase):
 
         runner.stop()
 
-        email_controller.stop()
-        self.assertEqual(len(email_controller.handler.messages), 2)
-        for msg in email_controller.handler.messages:
-            self.assertEqual(msg.mail_from, "alert@localhost")
-            self.assertEqual(msg.rcpt_tos, ["user@localhost"])
-            self.assertIn("Job ", msg.content.decode())
-            self.assertIn(
-                " completed with status done.\r\n", msg.content.decode())
-            job_id = msg.content.decode().replace("Job ", "")\
-                .replace(" completed with status done.\r\n", "")
-            self.assertIn(job_id, job_ids)
-
         self.assertEqual(len(job_ids), 2)
         self.assertEqual(len(os.listdir(TEST_JOB_OUTPUT)), 2)
         self.assertIn(job_ids[0], os.listdir(TEST_JOB_OUTPUT))
         self.assertIn(job_ids[1], os.listdir(TEST_JOB_OUTPUT))
 
         mid_job_dir = os.path.join(TEST_JOB_OUTPUT, job_ids[0])
-        self.assertEqual(count_non_locks(mid_job_dir), 6)
+        self.assertEqual(count_non_locks(mid_job_dir), 4)
 
         result = read_notebook(
             os.path.join(mid_job_dir, "result.ipynb"))
@@ -597,7 +535,7 @@ class MeowTests(unittest.TestCase):
         self.assertEqual(data, "Initial Data\nA line from Pattern 1")
 
         final_job_dir = os.path.join(TEST_JOB_OUTPUT, job_ids[1])
-        self.assertEqual(count_non_locks(final_job_dir), 6)
+        self.assertEqual(count_non_locks(final_job_dir), 4)
 
         result = read_notebook(os.path.join(final_job_dir, 
             "result.ipynb"))
@@ -711,7 +649,7 @@ class MeowTests(unittest.TestCase):
 
         self.assertNotIn(JOB_ERROR, status)
 
-        result_path = os.path.join(job_dir, "stdout.txt")
+        result_path = os.path.join(job_dir, "output.log")
         self.assertTrue(os.path.exists(result_path))
         result = read_file(os.path.join(result_path))
         self.assertEqual(
@@ -839,13 +777,14 @@ class MeowTests(unittest.TestCase):
             final_job_id = job_ids[0]
 
         mid_job_dir = os.path.join(TEST_JOB_OUTPUT, mid_job_id)
-        self.assertEqual(count_non_locks(mid_job_dir), 5)
+        self.assertEqual(count_non_locks(mid_job_dir), 4)
 
         mid_metafile = os.path.join(mid_job_dir, META_FILE)
         mid_status = read_yaml(mid_metafile)
         self.assertNotIn(JOB_ERROR, mid_status)
 
-        mid_result_path = os.path.join(mid_job_dir, "stdout.txt")
+        mid_result_path = os.path.join(
+            mid_job_dir, "output.log")
         self.assertTrue(os.path.exists(mid_result_path))
         mid_result = read_file(os.path.join(mid_result_path))
         self.assertEqual(
@@ -857,13 +796,13 @@ class MeowTests(unittest.TestCase):
         self.assertEqual(mid_output, "7806.25")
 
         final_job_dir = os.path.join(TEST_JOB_OUTPUT, final_job_id)
-        self.assertEqual(count_non_locks(final_job_dir), 5)
+        self.assertEqual(count_non_locks(final_job_dir), 4)
 
         final_metafile = os.path.join(final_job_dir, META_FILE)
         final_status = read_yaml(final_metafile)
         self.assertNotIn(JOB_ERROR, final_status)
 
-        final_result_path = os.path.join(final_job_dir, "stdout.txt")
+        final_result_path = os.path.join(final_job_dir, "output.log")
         self.assertTrue(os.path.exists(final_result_path))
         final_result = read_file(os.path.join(final_result_path))
         self.assertEqual(
@@ -975,7 +914,7 @@ class MeowTests(unittest.TestCase):
 
             self.assertNotIn(JOB_ERROR, status)
 
-            result_path = os.path.join(job_dir, "stdout.txt")
+            result_path = os.path.join(job_dir, "output.log")
             self.assertTrue(os.path.exists(result_path))
             
             output_path = os.path.join(TEST_MONITOR_BASE, "output", "A.txt")
@@ -1150,7 +1089,7 @@ class MeowTests(unittest.TestCase):
 
         self.assertNotIn(JOB_ERROR, status)
 
-        result_path = os.path.join(job_dir, "stdout.txt")
+        result_path = os.path.join(job_dir, "output.log")
         self.assertTrue(os.path.exists(result_path))
         result = read_file(os.path.join(result_path))
         self.assertEqual(
@@ -1914,3 +1853,8 @@ class MeowTests(unittest.TestCase):
 
         ct = runner.get_conductor_by_type(LocalPythonConductor)
         self.assertIn(ct, conductors)
+
+    # TODO test getting job cannot handle
+    # TODO test getting event cannot handle
+    # TODO tests runner job queue dir
+    # TODO tests runner job output dir
