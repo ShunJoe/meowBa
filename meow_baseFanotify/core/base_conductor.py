@@ -200,9 +200,12 @@ class BaseConductor:
                     with open(log_file, 'r') as file: 
                         for line in file: 
                             # Finding all created files and directories. If we parsed better we could probably get the path as well. 
-                            matches = re.findall(r"/([^/']+)'", line)  
-                            for match in matches:
+                            try:
+                                matches = re.findall(r"/([^/']+)'", line)  
+                                for match in matches:
                                     unique_filenames.add(match)
+                            except IndexError:
+                                pass
                             
 
                             

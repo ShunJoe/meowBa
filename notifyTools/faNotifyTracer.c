@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
         printf("Failed to execute the script.\n");
         return EXIT_FAILURE;
     }
-    sleep(5);
+    sleep(50);
     printf("Terminating program \n");
     exit(EXIT_SUCCESS);
 }
