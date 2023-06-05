@@ -19,7 +19,7 @@ from typing import Any, Tuple, Dict, Union
 from meow_base.core.meow import valid_job
 from meow_base.core.vars import VALID_CONDUCTOR_NAME_CHARS, VALID_CHANNELS, \
     JOB_STATUS, JOB_START_TIME, META_FILE, STATUS_RUNNING, STATUS_DONE , \
-    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, CREATED_FILES,  \
+    BACKUP_JOB_ERROR_FILE, JOB_END_TIME, STATUS_FAILED, JOB_ERROR, CREATED_FILES, \
     get_drt_imp_msg
 from meow_base.functionality.file_io import write_file, \
     threadsafe_read_status, threadsafe_update_status
@@ -173,23 +173,54 @@ class BaseConductor:
             write_file(f"Recieved incorrectly setup job.\n\n{e}", error_file)
             abort = True
 
+################## TRACING #######################################################
         # execute the job
         if not abort:
             try:
                 result = subprocess.call(
-                    f'{os.path.join(job_dir, job["tmp script command"])}', 
-                    cwd="."                )
+                    f'strace -o {os.path.join(job_dir, job["id"])}.trace --trace=open,openat,mkdir --follow-forks {os.path.join(job_dir, job["tmp script command"])}', 
+                    cwd=".", 
+                    shell = True
+                )
                 
                 if result == 0:
                     #Find the created files from the log file: 
+                    log_file = os.path.join(job_dir, f'{job["id"]}.trace')
+
+                    #Checking if the log file was created: 
+                    if not os.path.exists(log_file):
+                        threadsafe_update_status(
+                            {JOB_ERROR: "Trace file was not created. Tracing output files was not possible"
+                            }
+                        )
+                    
+                    # Read the log file and extract unique string: 
+                    unique_filenames = set()
+                    with open(log_file, 'r') as file: 
+                        for line in file: 
+                            if 'O_CREAT' in line or 'mkdir' in line:
+                                try:
+                                    start_index = line.index('"') + 1
+                                    end_index = line.index('"', start_index)
+                                    filename = line[start_index:end_index]
+                                    unique_filenames.add(os.path.basename(filename))
+                                except ValueError:
+                                    pass
+                            
+
+                    #delete file because we are done with it: 
+                    os.remove(f"{os.path.join(job_dir, job['id'])}.trace")
                     
                     # Update the status file with the finalised status and created files
                     threadsafe_update_status(
                         {
                             JOB_STATUS: STATUS_DONE,
-                            JOB_END_TIME: datetime.now()                        }, 
+                            JOB_END_TIME: datetime.now(),
+                            CREATED_FILES: list(unique_filenames)
+                        }, 
                         meta_file
                     )
+#######################################################################################
                 else:
                     # Update the status file with the error status. Don't 
                     # overwrite any more specific error messages already 
