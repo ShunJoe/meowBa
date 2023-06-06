@@ -8,23 +8,23 @@ from random import shuffle
 from shutil import copy
 from warnings import warn
 
-from meow_baseStrace.core.base_conductor import BaseConductor
-from meow_baseStrace.core.base_handler import BaseHandler
-from meow_baseStrace.core.base_monitor import BaseMonitor
-from meow_baseStrace.conductors import LocalPythonConductor
-from meow_baseStrace.core.vars import JOB_TYPE_PAPERMILL, JOB_ERROR, \
+from meow_base.core.base_conductor import BaseConductor
+from meow_base.core.base_handler import BaseHandler
+from meow_base.core.base_monitor import BaseMonitor
+from meow_base.conductors import LocalPythonConductor
+from meow_base.core.vars import JOB_TYPE_PAPERMILL, JOB_ERROR, \
     META_FILE, JOB_TYPE_PYTHON, JOB_CREATE_TIME, CREATED_FILES, JOB_RECIPE
-from meow_baseStrace.core.runner import MeowRunner
-from meow_baseStrace.functionality.file_io import make_dir, read_file, \
+from meow_base.core.runner import MeowRunner
+from meow_base.functionality.file_io import make_dir, read_file, \
     read_notebook, read_yaml, write_file, lines_to_string
-from meow_baseStrace.functionality.meow import create_parameter_sweep
-from meow_baseStrace.functionality.requirements import create_python_requirements
-from meow_baseStrace.patterns.file_event_pattern import WatchdogMonitor, \
+from meow_base.functionality.meow import create_parameter_sweep
+from meow_base.functionality.requirements import create_python_requirements
+from meow_base.patterns.file_event_pattern import WatchdogMonitor, \
     FileEventPattern
-from meow_baseStrace.recipes.jupyter_notebook_recipe import PapermillHandler, \
+from meow_base.recipes.jupyter_notebook_recipe import PapermillHandler, \
     JupyterNotebookRecipe
-from meow_baseStrace.recipes.python_recipe import PythonHandler, PythonRecipe
-from meow_baseStrace.tests.shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
+from meow_base.recipes.python_recipe import PythonHandler, PythonRecipe
+from meow_base.tests.shared import TEST_JOB_QUEUE, TEST_JOB_OUTPUT, TEST_MONITOR_BASE, \
     MAKER_RECIPE, APPENDING_NOTEBOOK, COMPLETE_PYTHON_SCRIPT, TEST_DIR, \
     FILTER_RECIPE, POROSITY_CHECK_NOTEBOOK, SEGMENT_FOAM_NOTEBOOK, \
     GENERATOR_NOTEBOOK, FOAM_PORE_ANALYSIS_NOTEBOOK, IDMC_UTILS_PYTHON_SCRIPT, \
