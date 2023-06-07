@@ -147,9 +147,9 @@ vy = 64
 vz = 64
 res = 3/vz
 backup_data_dir = os.path.join(TEST_DATA, "foam_ct_data")
-os.makedirs(backup_data_dir, exist_ok=True)
+make_dir(backup_data_dir, ensure_clean=True)
 foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
-os.makedirs(foam_data_dir, exist_ok=True)
+make_dir(foam_data_dir, ensure_clean=True)
 
 # Assuming that lines_to_string and GENERATE_PYTHON_SCRIPT are predefined
 gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
