@@ -136,6 +136,7 @@ def setup():
     make_dir(TEST_MONITOR_BASE, ensure_clean=True)
     make_dir(TEST_JOB_QUEUE, ensure_clean=True)
     make_dir(TEST_JOB_OUTPUT, ensure_clean=True)
+    make_dir(TEST_DATA, ensure_clean=True)
 
 # Initializing some variables
 good = 10
