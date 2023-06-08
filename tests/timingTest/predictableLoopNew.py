@@ -289,7 +289,7 @@ def setup():
     make_dir(TEST_DATA, ensure_clean=False)
 # Initializing some variables
 good = 10
-big = 0
+big = 5
 small = 0
 vx = 64
 vy = 64
@@ -343,8 +343,7 @@ def run_notebook(notebook_path):
     ep.preprocess(nb, {"metadata": {"path": os.path.dirname(notebook_path)}})
 
     # Save the executed notebook
-    executed_notebook_path = notebook_path.replace(".ipynb", "_executed.ipynb")
-    with open(executed_notebook_path, "w", encoding="utf-8") as f:
+    with open(notebook_path, "w", encoding="utf-8") as f:
         nbf.write(nb, f)
 
 # Specify the directory where the notebooks are located
