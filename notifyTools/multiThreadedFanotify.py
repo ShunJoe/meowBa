@@ -5,7 +5,6 @@ import subprocess
 import sys
 import threading
 
-
 def process_events(cli):
     while True:
         x = {}
@@ -14,10 +13,6 @@ def process_events(cli):
             x.setdefault(i.path, [i.pid, i.ev_types])
         if x:
             print(x)
-            
-            
-
-        
         
 def run_command(args):
     if args[0] == "pytest":

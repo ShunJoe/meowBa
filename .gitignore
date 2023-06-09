@@ -3,6 +3,7 @@
 *.log
 *.csv
 *.h5
+*.data
 
 */__pycache__
 tests/timingTest/backup_data
