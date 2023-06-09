@@ -1,22 +1,10 @@
 import os
 import random
 import importlib.util
-from multiprocessing import Pool, cpu_count
-import shutil
-import yaml
 from typing import List
 from nbconvert.preprocessors import ExecutePreprocessor
 
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy.ndimage as snd
-
 import nbformat as nbf
-
-from skimage.segmentation import watershed
-from skimage.feature import peak_local_max
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
 
 from os import makedirs, remove, rmdir, walk
 from os.path import exists, isfile, join
@@ -99,88 +87,10 @@ GENERATE_PYTHON_SCRIPT = [
 ]
 
 TEST_DIR = "test_files"
-TEST_MONITOR_BASE = "test_monitor_base"
+TEST_MONITOR = "test_monitor"
 TEST_JOB_QUEUE = "test_job_queue_dir"
 TEST_JOB_OUTPUT = "test_job_output"
-TEST_DATA = "test_data"
-
-def analyze_data(input_filename):
-    print("analyze_data")
-    # Load data
-    data = np.load(input_filename)
-
-    # Watershed: Identify separate pores
-    distance = snd.distance_transform_edt((data == 0))
-    local_maxi = peak_local_max(distance, indices=False, footprint=np.ones((3, 3, 3)), labels=(data == 0))
-    markers = snd.label(local_maxi)[0]
-    labels = watershed(-distance, markers, mask=(data == 0))
-
-    # Pore color map
-    somecmap = cm.get_cmap('magma', 256)
-    cvals = np.random.uniform(0, 1, len(np.unique(labels)))
-    newcmp = ListedColormap(somecmap(cvals))
-
-    # Plot statistics: pore radii
-    volumes = np.array([np.sum(labels == label) for label in np.unique(labels)])
-    volumes.sort()
-    # Ignore two largest labels (background and matrix)
-    radii = (volumes[:-2] * 3 / (4 * np.pi)) ** (1 / 3)  # Find radii, assuming spherical pores
-    _ = plt.hist(radii, bins=200)
-
-    # Save plot
-    filename_without_npy = input_filename.split(os.path.sep)[-1].split('.')[0]
-    filename_save = filename_without_npy + '_statistics.png'
-    output_filedir = "test_job_output"  # specify your output directory here
-
-    os.makedirs(output_filedir, exist_ok=True)
-    plt.savefig(os.path.join(output_filedir, filename_save))
-
-def check_porosity(input_filename):
-    input_filename = input_filename
-    output_filedir_accepted = 'foam_ct_data_accepted'
-    output_filedir_discarded = 'foam_ct_data_discarded'
-    porosity_lower_threshold = 0.8
-    utils_path = 'idmc_utils_module.py'
-
-    # Load the custom utils module
-    spec = importlib.util.spec_from_file_location("utils", utils_path)
-    utils = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(utils)
-
-    # Parameters
-    n_samples = 10000
-
-    # Load data
-    ct_data = np.load(input_filename)
-
-    # Plot center slices
-    utils.plot_center_slices(ct_data)
-
-    # Perform GMM fitting on samples from the dataset
-    sample_inds = np.random.randint(0, len(ct_data.ravel()), n_samples)
-    n_components = 2
-    means, stds, weights = utils.perform_GMM_np(
-        ct_data.ravel()[sample_inds],
-        n_components,
-        plot=True,
-        title='GMM fitted to ' + str(n_samples) + ' of ' +
-        str(len(ct_data.ravel())) + ' datapoints')
-    print('weights:', weights)
-
-    # Classify data as 'accepted' or 'discarded' according to porosity level
-    filename_without_npy = input_filename.split(os.path.sep)[-1].split('.')[0]
-
-    if np.max(weights) > porosity_lower_threshold:
-        os.makedirs(output_filedir_accepted, exist_ok=True)
-        acc_path = os.path.join(output_filedir_accepted, filename_without_npy + '.txt')
-        with open(acc_path, 'w') as file:
-            file.write(str(np.max(weights)) + ' ' + str(np.min(weights)))
-    else:
-        os.makedirs(output_filedir_discarded, exist_ok=True)
-        dis_path = os.path.join(output_filedir_discarded, filename_without_npy + '.txt')
-        with open(dis_path, 'w') as file:
-            file.write(str(np.max(weights)) + ' ' + str(np.min(weights)))
-
+BACKUP_DATA = "backup_data"
 
 def create_notebook(data_file):
     nb = nbf.v4.new_notebook()
@@ -191,7 +101,6 @@ def create_notebook(data_file):
 
     # Define the analyze_data function
     analyze_data_cell = nbf.v4.new_code_cell("""def analyze_data(input_filename):
-    print("analyze_data")
     # Load data
     data = np.load(input_filename)
 
@@ -283,10 +192,10 @@ def create_notebook(data_file):
 
 def setup():
     make_dir(TEST_DIR, ensure_clean=True)
-    make_dir(TEST_MONITOR_BASE, ensure_clean=True)
+    make_dir(TEST_MONITOR, ensure_clean=True)
     make_dir(TEST_JOB_QUEUE, ensure_clean=True)
     make_dir(TEST_JOB_OUTPUT, ensure_clean=True)
-    make_dir(TEST_DATA, ensure_clean=False)
+    make_dir(BACKUP_DATA, ensure_clean=False)
 # Initializing some variables
 good = 10
 big = 5
@@ -295,13 +204,13 @@ vx = 64
 vy = 64
 vz = 64
 res = 3/vz
-backup_data_dir = os.path.join(TEST_DATA, "foam_ct_data")
+backup_data_dir = os.path.join(BACKUP_DATA, "foam_ct_data")
 make_dir(backup_data_dir, ensure_clean=False)
-foam_data_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data")
+foam_data_dir = os.path.join(TEST_MONITOR, "foam_ct_data")
 make_dir(foam_data_dir, ensure_clean=False)
 
 # Assuming that lines_to_string and GENERATE_PYTHON_SCRIPT are predefined
-gen_path = os.path.join(TEST_MONITOR_BASE, "generator.py")
+gen_path = "generator.py"
 with open(gen_path, 'w') as f:
     f.write(lines_to_string(GENERATE_PYTHON_SCRIPT))
 
@@ -324,7 +233,6 @@ for i, val in enumerate(all_data):
     os.system(f"cp {backup_file} {target_file}")  # copying files
 
 # Code part where the functions are called
-foam_data_dir = "test_data/foam_ct_data/"
 data_files = os.listdir(foam_data_dir)
 data_files = [os.path.join(foam_data_dir, f) for f in data_files]
 
@@ -358,7 +266,7 @@ for notebook_file in notebook_files:
     run_notebook(notebook_path)
 
 #data_files = os.listdir(foam_data_dir)
-#data_files = [os.path.join("test_data/foam_ct_data/", f) for f in data_files]
+#data_files = [os.path.join("backup_data/foam_ct_data/", f) for f in data_files]
 #for i in range(len(data_files)):
 #    analyze_data(data_files[i])  # assuming each data file can be analyzed independently
 #    check_porosity(data_files[i])
@@ -368,6 +276,6 @@ for notebook_file in notebook_files:
 # expected_jobs = good * 3 + big * 5 + small * 5
 # assert jobs == expected_jobs, "Number of jobs does not match expected count."
 
-# results_dir = os.path.join(TEST_MONITOR_BASE, "foam_ct_data_pore_analysis")
+# results_dir = os.path.join(TEST_MONITOR, "foam_ct_data_pore_analysis")
 # results = len(os.listdir(results_dir))
 # assert results == good + big + small, "Number of results does not match expected count."

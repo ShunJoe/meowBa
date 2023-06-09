@@ -1,4 +1,10 @@
 
-.npy
-.log
-.csv
+*.npy
+*.log
+*.csv
+*.h5
+
+*/__pycache__
+tests/timingTest/backup_data
+tests/timingTest/generated_notebooks
+tests/timingTest/test_monitor
